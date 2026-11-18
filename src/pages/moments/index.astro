@@ -1,0 +1,44 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+const tags = [
+  'All',
+  'Forestry',
+  'Nature',
+  'Technology',
+  'Travel',
+  'Photography',
+  'Reflections',
+  'Daily life',
+];
+---
+
+<BaseLayout title="Moments — 山 / SHAN">
+  <section class="intro">
+    <div>
+      <h1>Life, in passing.</h1>
+      <p>Small moments. Familiar places. A few things worth keeping.</p>
+    </div>
+  </section>
+
+  <div class="filters" aria-label="Filter by tag">
+    {
+      tags.map((tag) => (
+        <button
+          class={`chip ${tag === 'All' ? 'active' : ''}`}
+          aria-pressed={tag === 'All' ? 'true' : 'false'}
+        >
+          {tag}
+        </button>
+      ))
+    }
+    <span class="count">MOMENTS</span>
+  </div>
+
+  <section class="empty">
+    <p>Moments collection initialized for Phase 1 visual scaffolding.</p>
+    <p class="hint">
+      Photography grid and multi-image albums will activate in Phase 2.
+    </p>
+  </section>
+</BaseLayout>

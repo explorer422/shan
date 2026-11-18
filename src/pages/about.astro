@@ -1,0 +1,32 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const storiesUrl = `${base}/stories/`;
+---
+
+<BaseLayout title="About — 山 / SHAN">
+  <section class="about">
+    <div class="eyebrow">Behind the journal</div>
+    <h1>Hello, I’m Shan.</h1>
+    <p>
+      I’m interested in forests, useful technology, and the ways a place
+      changes when we take the time to notice it.
+    </p>
+    <p>
+      這裡收集一些沿途的觀察：走進森林的筆記、生活裡的照片，還有尚在整理的想法。
+    </p>
+    <p>
+      森を歩くこと、写真を撮ること、少しずつ学ぶこと。この場所は、その小さな記録です。
+    </p>
+    <p>
+      Stories are for thoughts that need a little room. Moments are for what a
+      photograph can hold.
+    </p>
+    <a class="back" href={storiesUrl}>Explore the journal →</a>
+    <p class="hint">
+      This personal publishing website is designed for long-term independent
+      maintenance.
+    </p>
+  </section>
+</BaseLayout>

@@ -1,0 +1,12 @@
+---
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const aboutUrl = `${base}/about/`;
+const tagsUrl = `${base}/tags/`;
+const rssUrl = `${base}/rss.xml`;
+---
+
+<div id="mobile-menu" hidden>
+  <a href={aboutUrl}>About</a>
+  <a href={tagsUrl}>Explore tags</a>
+  <a href={rssUrl}>RSS feed ↗</a>
+</div>

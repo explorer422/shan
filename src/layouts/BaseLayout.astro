@@ -1,0 +1,102 @@
+---
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import MobileDrawer from '../components/MobileDrawer.astro';
+import '../styles/global.css';
+
+interface Props {
+  title?: string;
+  description?: string;
+  lang?: string;
+}
+
+const {
+  title = '山 / SHAN — Notes along the way',
+  description = 'A personal journal of forests, places, and small discoveries.',
+  lang = 'en',
+} = Astro.props;
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const faviconSvgUrl = `${base}/favicon.svg`;
+const faviconIcoUrl = `${base}/favicon.ico`;
+const favicon32Url = `${base}/favicon-32x32.png`;
+const appleTouchIconUrl = `${base}/apple-touch-icon.png`;
+---
+
+<!doctype html>
+<html lang={lang}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="icon" type="image/svg+xml" href={faviconSvgUrl} />
+    <link rel="alternate icon" href={faviconIcoUrl} sizes="any" />
+    <link
+      rel="alternate icon"
+      type="image/png"
+      href={favicon32Url}
+      sizes="32x32"
+    />
+    <link rel="apple-touch-icon" href={appleTouchIconUrl} sizes="180x180" />
+    <script is:inline>
+      (function () {
+        var saved = localStorage.getItem('shan-theme');
+        var prefersDark = window.matchMedia(
+          '(prefers-color-scheme: dark)'
+        ).matches;
+        if (saved === 'dark' || (!saved && prefersDark)) {
+          document.documentElement.classList.add('dark');
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <Header />
+    <MobileDrawer />
+    <main id="main" tabindex="-1">
+      <slot />
+    </main>
+    <Footer />
+
+    <script is:inline>
+      (function () {
+        var themeBtn = document.getElementById('theme');
+        var menuBtn = document.getElementById('menu');
+        var mobileMenu = document.getElementById('mobile-menu');
+
+        var initial =
+          localStorage.getItem('shan-theme') ||
+          (window.matchMedia('(prefers-color-scheme: dark)').matches
+            ? 'dark'
+            : 'light');
+
+        if (initial === 'dark') {
+          document.body.classList.add('dark');
+        }
+
+        if (themeBtn) {
+          themeBtn.addEventListener('click', function () {
+            var isDark = document.body.classList.toggle('dark');
+            var next = isDark ? 'dark' : 'light';
+            document.documentElement.classList.toggle('dark', isDark);
+            localStorage.setItem('shan-theme', next);
+            themeBtn.setAttribute(
+              'aria-label',
+              'Switch to ' + (isDark ? 'light' : 'dark') + ' theme'
+            );
+          });
+        }
+
+        if (menuBtn && mobileMenu) {
+          menuBtn.addEventListener('click', function () {
+            var hidden = !mobileMenu.hidden;
+            mobileMenu.hidden = hidden;
+            menuBtn.setAttribute('aria-expanded', String(!hidden));
+          });
+        }
+      })();
+    </script>
+  </body>
+</html>

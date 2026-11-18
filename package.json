@@ -1,0 +1,25 @@
+{
+  "name": "shan",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "ASTRO_TELEMETRY_DISABLED=1 astro dev",
+    "start": "ASTRO_TELEMETRY_DISABLED=1 astro dev",
+    "build": "ASTRO_TELEMETRY_DISABLED=1 astro build",
+    "preview": "ASTRO_TELEMETRY_DISABLED=1 astro preview",
+    "check": "ASTRO_TELEMETRY_DISABLED=1 astro check",
+    "verify:isolation": "node scripts/verify-isolation.mjs",
+    "test": "node scripts/verify-isolation.mjs && node scripts/test-phase1.mjs"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.12",
+    "@fontsource/dm-sans": "^5.3.0",
+    "@fontsource/noto-serif-jp": "^5.3.1",
+    "@fontsource/noto-serif-tc": "^5.3.1",
+    "@tailwindcss/typography": "^0.5.20",
+    "@tailwindcss/vite": "^4.3.5",
+    "astro": "^7.4.12",
+    "tailwindcss": "^4.3.5",
+    "typescript": "^6.0.3"
+  }
+}

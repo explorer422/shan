@@ -1,0 +1,30 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+const tags = [
+  'Forestry',
+  'Nature',
+  'Technology',
+  'Travel',
+  'Photography',
+  'Reflections',
+  'Daily life',
+];
+---
+
+<BaseLayout title="Explore Tags — 山 / SHAN">
+  <section class="about">
+    <div class="eyebrow">Explore</div>
+    <h1>Follow a thread.</h1>
+    <p>Browse the journal by the themes that connect it.</p>
+    <div class="filters">
+      {
+        tags.map((tag) => (
+          <button class="chip">
+            {tag}
+          </button>
+        ))
+      }
+    </div>
+  </section>
+</BaseLayout>

@@ -1,0 +1,19 @@
+---
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const aboutUrl = `${base}/about/`;
+const tagsUrl = `${base}/tags/`;
+const rssUrl = `${base}/rss.xml`;
+---
+
+<footer>
+  <div>
+    <span class="mark">山</span>
+    <span>Made of words, light, and a little wandering.</span>
+  </div>
+  <nav>
+    <a href={aboutUrl}>About</a>
+    <a href={tagsUrl}>Tags</a>
+    <a href={rssUrl}>RSS ↗</a>
+    <span>© 2026 SHAN</span>
+  </nav>
+</footer>

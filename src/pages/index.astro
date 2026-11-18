@@ -1,0 +1,57 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const aboutUrl = `${base}/about/`;
+const tags = [
+  'All',
+  'Forestry',
+  'Nature',
+  'Technology',
+  'Travel',
+  'Photography',
+  'Reflections',
+  'Daily life',
+];
+---
+
+<BaseLayout title="Stories — 山 / SHAN">
+  <section class="intro">
+    <div>
+      <h1>Notes along the way.</h1>
+      <p>Ideas, everyday life, and the places in between.</p>
+    </div>
+  </section>
+
+  <div class="filters" aria-label="Filter by tag">
+    {
+      tags.map((tag) => (
+        <button
+          class={`chip ${tag === 'All' ? 'active' : ''}`}
+          aria-pressed={tag === 'All' ? 'true' : 'false'}
+        >
+          {tag}
+        </button>
+      ))
+    }
+    <span class="count">4 STORIES</span>
+  </div>
+
+  <section class="empty">
+    <p>Stories collection initialized for Phase 1 visual scaffolding.</p>
+    <p class="hint">
+      Full Markdown stories and media pipeline will activate in Phase 2.
+    </p>
+  </section>
+
+  <aside class="note">
+    <div>
+      <h3>A little about this place</h3>
+      <p>
+        A personal collection of things I’m learning, seeing, and thinking
+        about.
+      </p>
+    </div>
+    <a href={aboutUrl}>Meet the author ↗</a>
+  </aside>
+</BaseLayout>

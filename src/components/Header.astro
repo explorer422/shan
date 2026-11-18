@@ -1,0 +1,41 @@
+---
+interface Props {
+  currentPath?: string;
+}
+
+const { currentPath = Astro.url.pathname } = Astro.props;
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const storiesUrl = `${base}/stories/`;
+const momentsUrl = `${base}/moments/`;
+const homeUrl = `${base}/`;
+const aboutUrl = `${base}/about/`;
+
+const isMoments = currentPath.includes('/moments');
+const isStories = !isMoments && (
+  currentPath === `${base}/` ||
+  currentPath === `${base}` ||
+  currentPath.includes('/stories')
+);
+---
+
+<header>
+  <a class="brand" href={homeUrl} aria-label="Shan home">
+    <span class="mark">山</span>
+    <span>
+      SHAN
+      <span class="brand-sub">A PERSONAL JOURNAL</span>
+    </span>
+  </a>
+  <nav class="primary" aria-label="Main">
+    <a href={storiesUrl} class={isStories ? 'active' : ''}>Stories</a>
+    <a href={momentsUrl} class={isMoments ? 'active' : ''}>Moments</a>
+  </nav>
+  <nav class="secondary" aria-label="Secondary">
+    <a href={aboutUrl}>About</a>
+    <button id="search-button" aria-label="Search">⌕</button>
+    <button id="theme" aria-label="Switch color theme">◐</button>
+    <button id="menu" aria-label="Open navigation" aria-expanded="false">
+      ☰
+    </button>
+  </nav>
+</header>

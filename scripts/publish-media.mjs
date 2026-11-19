@@ -1,6 +1,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  loadEnvConfig,
+  getMimeType,
+  sendS3Request,
+} from './lib/r2-client.mjs';
 
 // ponytail: R2 publishing tool supporting dry-run, mock, and real S3 API
 const ROOT = process.cwd();
@@ -9,17 +14,24 @@ const MANIFEST_PATH = path.join(ROOT, 'src/data/media-manifest.json');
 const MOCK_R2_DIR = path.join(ROOT, '.mock-r2');
 
 const args = process.argv.slice(2);
-const isDryRun = args.includes('--dry-run');
 const isMock = args.includes('--mock');
 const isVerifyOnly = args.includes('--verify-only');
+const isProd = args.includes('--prod');
+// ponytail: default to dry-run unless --prod or --mock is explicitly passed
+const isDryRun = args.includes('--dry-run') || (!isProd && !isMock);
+
+const r2Config = loadEnvConfig();
 
 console.log('[publish-media] R2 Media Publishing Tool');
-if (isDryRun) {
-  console.log('[publish-media] Mode: DRY-RUN (no files uploaded)');
+if (isVerifyOnly) {
+  const target = isMock ? 'LOCAL MOCK' : 'REMOTE R2';
+  console.log(`[publish-media] Mode: VERIFY-ONLY (${target})`);
 } else if (isMock) {
   console.log('[publish-media] Mode: LOCAL MOCK (.mock-r2)');
+} else if (isProd) {
+  console.log(`[publish-media] Mode: PRODUCTION R2 (${r2Config.host})`);
 } else {
-  console.log('[publish-media] Mode: PRODUCTION R2');
+  console.log('[publish-media] Mode: DRY-RUN (safe simulation)');
 }
 
 if (!fs.existsSync(MANIFEST_PATH)) {
@@ -31,28 +43,49 @@ const manifest = JSON.parse(fs.readFileSync(MANIFEST_PATH, 'utf-8'));
 const items = Object.values(manifest.items);
 console.log(`[publish-media] Loaded ${items.length} items from manifest.`);
 
-async function checkRemoteExists(key) {
+export async function checkRemoteExists(key, localSize = null) {
   if (isDryRun) {
     return false;
   }
   if (isMock) {
-    return fs.existsSync(path.join(MOCK_R2_DIR, key));
+    const dest = path.join(MOCK_R2_DIR, key);
+    if (!fs.existsSync(dest)) return false;
+    if (localSize !== null) {
+      return fs.statSync(dest).size === localSize;
+    }
+    return true;
   }
-  const baseUrl = process.env.PUBLIC_MEDIA_BASE_URL;
-  if (!baseUrl) {
-    throw new Error('PUBLIC_MEDIA_BASE_URL is required for remote check.');
+  if (!r2Config.isConfigured) {
+    throw new Error(
+      'R2 credentials are required for remote operations in production mode.'
+    );
   }
   try {
-    const res = await fetch(`${baseUrl.replace(/\/$/, '')}/${key}`, {
-      method: 'HEAD',
-    });
-    return res.status === 200;
-  } catch {
+    const res = await sendS3Request('HEAD', key, {}, r2Config);
+    if (res.status !== 200) {
+      return false;
+    }
+    if (localSize !== null) {
+      const len = res.headers.get('content-length');
+      if (len && parseInt(len, 10) !== localSize) {
+        console.warn(
+          `[publish-media] Size mismatch for ${key}: ` +
+            `local=${localSize}, remote=${len}`
+        );
+        return false;
+      }
+    }
+    return true;
+  } catch (err) {
+    console.error(
+      `[publish-media] Remote check error for ${key}:`,
+      err.message
+    );
     return false;
   }
 }
 
-async function uploadVariant(localPath, key) {
+export async function uploadVariant(localPath, key) {
   if (isDryRun) {
     console.log(`[publish-media] (dry-run) Would upload: ${key}`);
     return true;
@@ -65,7 +98,37 @@ async function uploadVariant(localPath, key) {
     console.log(`[publish-media] (mock) Stored: ${key} (${size} bytes)`);
     return true;
   }
-  console.log(`[publish-media] (prod) Uploading ${key} to R2...`);
+  if (!r2Config.isConfigured) {
+    throw new Error('R2 credentials are not configured in .env');
+  }
+
+  const fileData = fs.readFileSync(localPath);
+  const contentType = getMimeType(localPath);
+  const cacheControl = 'public, max-age=31536000, immutable';
+
+  console.log(
+    `[publish-media] (prod) Uploading ${key} ` +
+      `(${fileData.length} bytes, ${contentType})...`
+  );
+  const res = await sendS3Request(
+    'PUT',
+    key,
+    {
+      body: fileData,
+      extraHeaders: {
+        'content-type': contentType,
+        'cache-control': cacheControl,
+      },
+    },
+    r2Config
+  );
+
+  if (!res.ok) {
+    console.error(
+      `[publish-media] Upload failed for ${key}: HTTP ${res.status}`
+    );
+    return false;
+  }
   return true;
 }
 
@@ -89,8 +152,9 @@ export async function publishAll() {
         results.failed++;
         break;
       }
+      const localSize = fs.statSync(localFile).size;
 
-      const alreadyExists = await checkRemoteExists(key);
+      const alreadyExists = await checkRemoteExists(key, localSize);
       if (alreadyExists) {
         results.skipped++;
         results.verified++;
@@ -112,7 +176,9 @@ export async function publishAll() {
       }
       results.uploaded++;
 
-      const verified = isDryRun ? true : await checkRemoteExists(key);
+      const verified = isDryRun
+        ? true
+        : await checkRemoteExists(key, localSize);
       if (verified) {
         results.verified++;
       } else {

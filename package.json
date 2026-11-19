@@ -11,6 +11,7 @@
     "verify:isolation": "node scripts/verify-isolation.mjs",
     "test:phase1": "node scripts/test-phase1.mjs",
     "test:phase2": "node scripts/test-phase2.mjs",
+    "test:phase3b4": "node scripts/test-phase3b4.mjs",
     "test": "node scripts/test-all.mjs"
   },
   "devDependencies": {

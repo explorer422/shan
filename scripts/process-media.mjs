@@ -79,51 +79,105 @@ async function processImage(imagePath) {
   const isMoment = logicalId.startsWith('moments/');
 
   // 1. thumb400: square crop for moments, proportional for stories
-  const thumbPath = path.join(outSubDir, `${parsed.name}-400w.webp`);
-  const thumbKey = `${parsed.dir}/${parsed.name}-400w.webp`.replace(/^\//, '');
+  let thumbPipe = baseSharp.clone();
   if (isMoment) {
-    await baseSharp
-      .clone()
-      .resize(400, 400, { fit: 'cover' })
-      .webp({ quality: 85 })
-      .toFile(thumbPath);
+    thumbPipe = thumbPipe.resize(400, 400, { fit: 'cover' });
   } else {
-    await baseSharp
-      .clone()
-      .resize(400)
-      .webp({ quality: 85 })
-      .toFile(thumbPath);
+    thumbPipe = thumbPipe.resize(400);
   }
+  const thumbBuffer = await thumbPipe.webp({ quality: 85 }).toBuffer();
+  const thumbMeta = await sharp(thumbBuffer).metadata();
+  const thumbSha = crypto
+    .createHash('sha256')
+    .update(thumbBuffer)
+    .digest('hex');
+  const thumbFilename = `${parsed.name}-400w-${thumbSha}.webp`;
+  const thumbPath = path.join(outSubDir, thumbFilename);
+  const thumbKey = path
+    .join(parsed.dir, thumbFilename)
+    .replace(/\\/g, '/')
+    .replace(/^\//, '');
 
   // 2. card800: width 800px proportional
-  const cardPath = path.join(outSubDir, `${parsed.name}-800w.webp`);
-  const cardKey = `${parsed.dir}/${parsed.name}-800w.webp`.replace(/^\//, '');
-  await baseSharp
+  const cardBuffer = await baseSharp
     .clone()
     .resize(800)
     .webp({ quality: 85 })
-    .toFile(cardPath);
+    .toBuffer();
+  const cardMeta = await sharp(cardBuffer).metadata();
+  const cardSha = crypto
+    .createHash('sha256')
+    .update(cardBuffer)
+    .digest('hex');
+  const cardFilename = `${parsed.name}-800w-${cardSha}.webp`;
+  const cardPath = path.join(outSubDir, cardFilename);
+  const cardKey = path
+    .join(parsed.dir, cardFilename)
+    .replace(/\\/g, '/')
+    .replace(/^\//, '');
 
   // 3. full1600: width 1600px proportional
-  const fullPath = path.join(outSubDir, `${parsed.name}-1600w.webp`);
-  const fullKey = `${parsed.dir}/${parsed.name}-1600w.webp`.replace(/^\//, '');
-  await baseSharp
+  const fullBuffer = await baseSharp
     .clone()
     .resize(1600)
     .webp({ quality: 85 })
-    .toFile(fullPath);
+    .toBuffer();
+  const fullMeta = await sharp(fullBuffer).metadata();
+  const fullSha = crypto
+    .createHash('sha256')
+    .update(fullBuffer)
+    .digest('hex');
+  const fullFilename = `${parsed.name}-1600w-${fullSha}.webp`;
+  const fullPath = path.join(outSubDir, fullFilename);
+  const fullKey = path
+    .join(parsed.dir, fullFilename)
+    .replace(/\\/g, '/')
+    .replace(/^\//, '');
 
   // 4. avif1600: width 1600px AVIF
-  const avifPath = path.join(outSubDir, `${parsed.name}-1600w.avif`);
-  const avifKey = `${parsed.dir}/${parsed.name}-1600w.avif`.replace(/^\//, '');
-  await baseSharp
+  const avifBuffer = await baseSharp
     .clone()
     .resize(1600)
     .avif({ quality: 75 })
-    .toFile(avifPath);
+    .toBuffer();
+  const avifMeta = await sharp(avifBuffer).metadata();
+  const avifSha = crypto
+    .createHash('sha256')
+    .update(avifBuffer)
+    .digest('hex');
+  const avifFilename = `${parsed.name}-1600w-${avifSha}.avif`;
+  const avifPath = path.join(outSubDir, avifFilename);
+  const avifKey = path
+    .join(parsed.dir, avifFilename)
+    .replace(/\\/g, '/')
+    .replace(/^\//, '');
+
+  // Remove stale variant files if keys have changed
+  if (manifest.items[logicalId]?.variants) {
+    for (const v of Object.values(manifest.items[logicalId].variants)) {
+      if (
+        v.key &&
+        v.key !== thumbKey &&
+        v.key !== cardKey &&
+        v.key !== fullKey &&
+        v.key !== avifKey
+      ) {
+        const oldFile = path.join(OUTPUT_DIR, v.key);
+        if (fs.existsSync(oldFile)) {
+          fs.unlinkSync(oldFile);
+        }
+      }
+    }
+  }
+
+  // Write new variant files
+  fs.writeFileSync(thumbPath, thumbBuffer);
+  fs.writeFileSync(cardPath, cardBuffer);
+  fs.writeFileSync(fullPath, fullBuffer);
+  fs.writeFileSync(avifPath, avifBuffer);
 
   // Safe editorial metadata
-  const editorialMeta = {
+  const editorialMeta = manifest.items[logicalId]?.metadata || {
     captureDate: new Date().toISOString(),
     cameraModel: 'Fujifilm X-T5',
     lens: 'XF 23mm F1.4 R LM WR',
@@ -133,21 +187,19 @@ async function processImage(imagePath) {
     iso: 160,
   };
 
-  const thumbHeight = isMoment ? 400 : Math.round(400 / aspectRatio);
-
   manifest.items[logicalId] = {
     id: logicalId,
-    storageKeyPrefix: `${parsed.dir}/${parsed.name}`,
+    storageKeyPrefix: `${parsed.dir}/${parsed.name}`.replace(/\\/g, '/'),
     format: 'webp',
     width,
     height,
     aspectRatio,
     contentHash: `sha256-${hash.slice(0, 40)}`,
     variants: {
-      thumb400: { key: thumbKey, w: 400, h: thumbHeight },
-      card800: { key: cardKey, w: 800, h: Math.round(800 / aspectRatio) },
-      full1600: { key: fullKey, w: 1600, h: Math.round(1600 / aspectRatio) },
-      avif1600: { key: avifKey, w: 1600, h: Math.round(1600 / aspectRatio) },
+      thumb400: { key: thumbKey, w: thumbMeta.width, h: thumbMeta.height },
+      card800: { key: cardKey, w: cardMeta.width, h: cardMeta.height },
+      full1600: { key: fullKey, w: fullMeta.width, h: fullMeta.height },
+      avif1600: { key: avifKey, w: avifMeta.width, h: avifMeta.height },
     },
     metadata: editorialMeta,
   };

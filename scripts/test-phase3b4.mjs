@@ -117,10 +117,10 @@ assert.ok(mockOut1.includes('uploaded: 64'));
 assert.ok(mockOut1.includes('skipped: 0'));
 
 // Verify metadata files were generated in .mock-r2
-const sampleMeta = path.join(
-  MOCK_DIR,
-  'stories/forest-time/cover-800w.webp.meta.json'
-);
+const manifestData = JSON.parse(fs.readFileSync(MANIFEST_PATH, 'utf-8'));
+const targetKey =
+  manifestData.items['stories/forest-time/cover'].variants.card800.key;
+const sampleMeta = path.join(MOCK_DIR, `${targetKey}.meta.json`);
 assert.ok(fs.existsSync(sampleMeta), 'Metadata file must be stored in mock');
 const parsedMeta = JSON.parse(fs.readFileSync(sampleMeta, 'utf-8'));
 assert.ok(parsedMeta.sha256, 'Metadata must include sha256 checksum');
@@ -136,7 +136,6 @@ console.log('  ✓ Mock mode uploaded 64 files with verified SHA-256 metadata.')
 
 // 7. Same byte length, different content collision detection
 console.log('\n[7] Different payload with identical byte length (Collision)');
-const targetKey = 'stories/forest-time/cover-800w.webp';
 const targetFile = path.join(MOCK_DIR, targetKey);
 const targetMeta = `${targetFile}.meta.json`;
 const originalBytes = fs.readFileSync(targetFile);

@@ -5,4 +5,5 @@ execSync('node scripts/verify-isolation.mjs', { stdio: 'inherit' });
 execSync('node scripts/test-phase1.mjs', { stdio: 'inherit' });
 execSync('node scripts/test-phase2.mjs', { stdio: 'inherit' });
 execSync('node scripts/test-phase3b4.mjs', { stdio: 'inherit' });
+execSync('node scripts/test-phase3b6.mjs', { stdio: 'inherit' });
 console.log('\n[test-all] ALL VERIFICATION SUITES COMPLETED SUCCESSFULLY! ✓');

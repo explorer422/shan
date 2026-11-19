@@ -16,7 +16,7 @@ console.log('[test-phase2] Starting Phase 2 Test Suite: 10 Scenarios...');
 console.log('\n[Scenario 1] Valid media reference resolution');
 const validMedia = resolveMedia('stories/forest-time/cover');
 assert.ok(
-  validMedia.src.includes('cover-800w.webp'),
+  validMedia.src.includes('cover-800w-') && validMedia.src.endsWith('.webp'),
   'src must point to 800w webp'
 );
 assert.ok(

@@ -9,7 +9,9 @@
     "preview": "ASTRO_TELEMETRY_DISABLED=1 astro preview",
     "check": "ASTRO_TELEMETRY_DISABLED=1 astro check",
     "verify:isolation": "node scripts/verify-isolation.mjs",
-    "test": "node scripts/verify-isolation.mjs && node scripts/test-phase1.mjs"
+    "test:phase1": "node scripts/test-phase1.mjs",
+    "test:phase2": "node scripts/test-phase2.mjs",
+    "test": "node scripts/test-all.mjs"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.12",

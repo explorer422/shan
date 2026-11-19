@@ -2,19 +2,29 @@
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import MobileDrawer from '../components/MobileDrawer.astro';
+import SearchDialog from '../components/SearchDialog.astro';
+import LightboxViewer from '../components/LightboxViewer.astro';
 import '../styles/global.css';
 
 interface Props {
   title?: string;
   description?: string;
   lang?: string;
+  ogType?: string;
+  image?: string;
+  article?: boolean;
 }
 
 const {
   title = '山 / SHAN — Notes along the way',
   description = 'A personal journal of forests, places, and small discoveries.',
   lang = 'en',
+  ogType: initialOgType,
+  image,
+  article = false,
 } = Astro.props;
+
+const ogType = initialOgType || (article ? 'article' : 'website');
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 const faviconSvgUrl = `${base}/favicon.svg`;
@@ -30,6 +40,14 @@ const appleTouchIconUrl = `${base}/apple-touch-icon.png`;
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{title}</title>
     <meta name="description" content={description} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content={ogType} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    {image && <meta property="og:image" content={image} />}
+    {image && <meta name="twitter:image" content={image} />}
     <link rel="icon" type="image/svg+xml" href={faviconSvgUrl} />
     <link rel="alternate icon" href={faviconIcoUrl} sizes="any" />
     <link
@@ -59,6 +77,8 @@ const appleTouchIconUrl = `${base}/apple-touch-icon.png`;
       <slot />
     </main>
     <Footer />
+    <SearchDialog />
+    <LightboxViewer />
 
     <script is:inline>
       (function () {

@@ -1,0 +1,123 @@
+<dialog id="search-dialog">
+  <div class="dialog-head">
+    <span>SEARCH THE JOURNAL</span>
+    <button class="close" aria-label="Close search">✕</button>
+  </div>
+  <input
+    id="search"
+    placeholder="Forests, places, little discoveries…"
+    aria-label="Search content"
+  />
+  <div id="results"></div>
+  <p class="hint">Search across Stories & Moments · Esc to close</p>
+</dialog>
+
+<script>
+  interface SearchItem {
+    type: 'story' | 'moment';
+    id: string;
+    url: string;
+    title: string;
+    date: string;
+    tags: string[];
+    excerpt?: string;
+    location?: string;
+    body?: string;
+  }
+
+  let searchData: SearchItem[] | null = null;
+  const dialog = document.getElementById(
+    'search-dialog'
+  ) as HTMLDialogElement | null;
+  const searchBtn = document.getElementById('search-button');
+  const searchInput = document.getElementById(
+    'search'
+  ) as HTMLInputElement | null;
+  const resultsDiv = document.getElementById('results');
+  const closeBtn = dialog?.querySelector('.close');
+
+  async function loadData() {
+    if (!searchData) {
+      const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+      const res = await fetch(`${base}/search-data.json`);
+      searchData = await res.json();
+    }
+  }
+
+  function esc(s: string) {
+    return String(s).replace(
+      /[&<>"']/g,
+      (c) =>
+        ({
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          '"': '&quot;',
+          "'": '&#39;',
+        })[c] || c
+    );
+  }
+
+  function doSearch() {
+    if (!searchInput || !resultsDiv || !searchData) return;
+    const q = searchInput.value.trim().toLowerCase();
+    const filtered = searchData.filter((item) => {
+      if (!q) return true;
+      const haystack = [
+        item.title,
+        item.excerpt || '',
+        item.tags.join(' '),
+        item.location || '',
+        item.body || '',
+      ]
+        .join(' ')
+        .toLowerCase();
+      return haystack.includes(q);
+    });
+
+    if (filtered.length === 0) {
+      resultsDiv.innerHTML =
+        '<p class="empty">' +
+        'No matches yet. Try “forest”, “Tokyo”, or “山”.</p>';
+      return;
+    }
+
+    resultsDiv.innerHTML = filtered
+      .map(
+        (item) => `
+      <a href="${item.url}">
+        <small>${item.type.toUpperCase()} · ${item.date}</small>
+        ${esc(item.title)}
+      </a>
+    `
+      )
+      .join('');
+
+    resultsDiv.querySelectorAll('a').forEach((a) => {
+      a.addEventListener('click', () => dialog?.close());
+    });
+  }
+
+  function openSearch() {
+    loadData().then(() => {
+      dialog?.showModal();
+      searchInput?.focus();
+      doSearch();
+    });
+  }
+
+  searchBtn?.addEventListener('click', openSearch);
+  searchInput?.addEventListener('input', doSearch);
+  closeBtn?.addEventListener('click', () => dialog?.close());
+
+  dialog?.addEventListener('click', (e) => {
+    if (e.target === dialog) dialog.close();
+  });
+
+  window.addEventListener('keydown', (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+      e.preventDefault();
+      openSearch();
+    }
+  });
+</script>

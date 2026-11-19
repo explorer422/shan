@@ -1,0 +1,114 @@
+---
+import { getCollection, render } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { resolveMedia } from '../../lib/media';
+import { formatDate } from '../../lib/date';
+import { tagToSlug } from '../../lib/tag';
+
+export async function getStaticPaths() {
+  const moments = await getCollection('moments', ({ data }) => {
+    return import.meta.env.PROD ? !data.draft : true;
+  });
+  return moments.map((moment) => ({
+    params: { slug: moment.id },
+    props: { moment },
+  }));
+}
+
+const { moment } = Astro.props;
+const { Content } = await render(moment);
+
+const { title, caption, date, location, tags, media } = moment.data;
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const momentsUrl = `${base}/moments/`;
+const dateStr = formatDate(date);
+
+const resolvedMedia = media.map((m) => {
+  const res = resolveMedia(m.id);
+  return {
+    id: m.id,
+    alt: m.alt || title,
+    caption: m.caption || title,
+    src: res.src,
+    srcSet: res.srcSet,
+  };
+});
+
+const coverMedia = resolvedMedia[0];
+
+const lightboxItems = resolvedMedia.map((m) => ({
+  src: m.src,
+  alt: m.alt,
+  caption: title,
+  date: dateStr,
+  location: location || '',
+}));
+---
+
+<BaseLayout
+  title={`${title} — 山 / SHAN`}
+  description={caption}
+  image={coverMedia.src}
+>
+  <article class="article">
+    <a class="back" href={momentsUrl}>← All moments</a>
+    <div class="eyebrow">{location}</div>
+    <h1>{title}</h1>
+    <div class="meta">
+      <time datetime={date.toISOString()}>{dateStr}</time>
+      <span>·</span>
+      <span>{location}</span>
+    </div>
+    <p class="lead">{caption}</p>
+    <div class="filters">
+      {
+        tags.map((t) => (
+          <a class="chip" href={`${base}/tags/${tagToSlug(t)}/`}>
+            # {t}
+          </a>
+        ))
+      }
+    </div>
+    <div class="album-photos">
+      {
+        resolvedMedia.map((photo, i) => (
+          <button
+            type="button"
+            data-index={i}
+            class="album-photo-btn"
+            aria-label={`Open photo ${i + 1} in viewer`}
+          >
+            <img
+              src={photo.src}
+              srcset={photo.srcSet}
+              alt={photo.alt}
+              loading={i === 0 ? 'eager' : 'lazy'}
+            />
+          </button>
+        ))
+      }
+    </div>
+    <p class="hint">Select a photograph to open the immersive viewer.</p>
+    {
+      moment.body && moment.body.trim().length > 0 && (
+        <div class="prose" style="margin-top: 40px">
+          <Content />
+        </div>
+      )
+    }
+  </article>
+
+  <script define:vars={{ lightboxItems }}>
+    const buttons =
+      document.querySelectorAll('.album-photo-btn');
+    buttons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const idx = Number(btn.getAttribute('data-index') || 0);
+        if (typeof window.openLightbox === 'function') {
+          window.openLightbox(lightboxItems, idx);
+        }
+      });
+    });
+  </script>
+</BaseLayout>

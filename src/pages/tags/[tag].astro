@@ -1,0 +1,109 @@
+---
+import { getCollection, type CollectionEntry } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import StoryCard from '../../components/StoryCard.astro';
+import MomentCard from '../../components/MomentCard.astro';
+import { tagToSlug } from '../../lib/tag';
+
+export async function getStaticPaths() {
+  const stories = await getCollection('stories', ({ data }) => {
+    return import.meta.env.PROD ? !data.draft : true;
+  });
+  const moments = await getCollection('moments', ({ data }) => {
+    return import.meta.env.PROD ? !data.draft : true;
+  });
+
+  const tagMap = new Map<
+    string,
+    {
+      name: string;
+      stories: CollectionEntry<'stories'>[];
+      moments: CollectionEntry<'moments'>[];
+    }
+  >();
+
+  for (const s of stories) {
+    for (const t of s.data.tags) {
+      const key = tagToSlug(t);
+      if (!tagMap.has(key)) {
+        tagMap.set(key, { name: t, stories: [], moments: [] });
+      }
+      tagMap.get(key)!.stories.push(s);
+    }
+  }
+
+  for (const m of moments) {
+    for (const t of m.data.tags) {
+      const key = tagToSlug(t);
+      if (!tagMap.has(key)) {
+        tagMap.set(key, { name: t, stories: [], moments: [] });
+      }
+      tagMap.get(key)!.moments.push(m);
+    }
+  }
+
+  return Array.from(tagMap.entries()).map(([slug, data]) => ({
+    params: { tag: slug },
+    props: {
+      tagName: data.name,
+      stories: data.stories.sort(
+        (a, b) => b.data.date.getTime() - a.data.date.getTime()
+      ),
+      moments: data.moments.sort(
+        (a, b) => b.data.date.getTime() - a.data.date.getTime()
+      ),
+    },
+  }));
+}
+
+const { tagName, stories, moments } = Astro.props;
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const tagsUrl = `${base}/tags/`;
+---
+
+<BaseLayout title={`#${tagName} — 山 / SHAN`}>
+  <section class="intro">
+    <div>
+      <div class="eyebrow">Tag</div>
+      <h1>#{tagName}</h1>
+      <p>
+        {stories.length} {stories.length === 1 ? 'story' : 'stories'} ·
+        {moments.length} {moments.length === 1 ? 'moment' : 'moments'}
+      </p>
+    </div>
+  </section>
+
+  <a class="back" href={tagsUrl}>← All tags</a>
+
+  {
+    stories.length > 0 && (
+      <>
+        <div class="section-title">
+          <h2>STORIES</h2>
+          <span>Writing & reflections</span>
+        </div>
+        <div class="cards" style="margin-bottom: 50px">
+          {stories.map((story) => (
+            <StoryCard story={story} />
+          ))}
+        </div>
+      </>
+    )
+  }
+
+  {
+    moments.length > 0 && (
+      <>
+        <div class="section-title">
+          <h2>MOMENTS</h2>
+          <span>Photographs & small discoveries</span>
+        </div>
+        <div class="photo-grid">
+          {moments.map((moment) => (
+            <MomentCard moment={moment} />
+          ))}
+        </div>
+      </>
+    )
+  }
+</BaseLayout>

@@ -1,4 +1,6 @@
-import manifestData from '../data/media-manifest.json';
+import manifestData from '../data/media-manifest.json' with {
+  type: 'json',
+};
 
 export interface MediaVariant {
   key: string;
@@ -45,8 +47,14 @@ export interface ResolvedMedia {
 }
 
 export function resolveMedia(mediaId: string): ResolvedMedia {
-  const isDev = import.meta.env.DEV;
-  const configuredBase = import.meta.env.PUBLIC_MEDIA_BASE_URL;
+  const g = globalThis as {
+    process?: { env?: Record<string, string | undefined> };
+  };
+  const isDev =
+    import.meta.env?.DEV ?? (g.process?.env?.NODE_ENV !== 'production');
+  const configuredBase =
+    import.meta.env?.PUBLIC_MEDIA_BASE_URL ??
+    g.process?.env?.PUBLIC_MEDIA_BASE_URL;
 
   let base: string;
   if (isDev) {
@@ -67,6 +75,12 @@ export function resolveMedia(mediaId: string): ResolvedMedia {
   const item = items[cleanId];
 
   if (!item) {
+    if (!isDev) {
+      throw new Error(
+        `[media-resolver] Production build failed: Missing media ID ` +
+        `'${mediaId}' in media manifest.`
+      );
+    }
     console.warn(`[media-resolver] Missing manifest entry: ${mediaId}`);
     return {
       src: `${base}/placeholder.webp`,
@@ -80,6 +94,12 @@ export function resolveMedia(mediaId: string): ResolvedMedia {
   }
 
   const v = item.variants;
+  if (!isDev && (!v?.thumb400 || !v?.card800 || !v?.full1600)) {
+    throw new Error(
+      `[media-resolver] Production build failed: Media item '${mediaId}' ` +
+      `is missing required variants.`
+    );
+  }
   return {
     src: `${base}/${v.card800.key}`,
     srcSet: [

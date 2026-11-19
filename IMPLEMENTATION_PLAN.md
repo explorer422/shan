@@ -3,9 +3,9 @@
 ## 1. Executive Summary
 
 This roadmap defines the engineering plan for constructing the production
-website "山 / SHAN — Notes along the way". The plan implements an R2-First media
-architecture with strict Git isolation, transitioning through three verifiable
-phases:
+website "山 / SHAN — Notes along the way". The plan implements an
+R2-First media architecture with strict Git isolation, transitioning through
+three verifiable phases:
 - **Phase 1**: Astro foundation, visual design tokens, self-hosted fonts,
   responsive layouts, static route scaffolding, and local media dev strategy.
 - **Phase 2**: Content Layer schemas, media processing & EXIF stripping,
@@ -94,16 +94,16 @@ phases:
 
 ---
 
-## 3. Phase 2: Content Collections & Media Pipeline
+## 3. Phase 2: Content Collections & Media Pipeline (COMPLETED)
 
 ### 3.1 Objectives
 - Implement Astro Content Layer schemas with Zod validation for Stories and
   Moments.
 - Migrate mock prototype content to Markdown format.
-- Build the local media processing pipeline (`scripts/process-media.ts`) with
+- Build the local media processing pipeline (`scripts/process-media.mjs`) with
   orientation correction, metadata extraction, and binary EXIF stripping.
-- Implement the Cloudflare R2 upload interface (`scripts/publish-media.ts`) with
-  idempotent uploads and verification checks.
+- Implement the Cloudflare R2 upload interface (`scripts/publish-media.mjs`)
+  with idempotent uploads and verification checks.
 - Implement the decoupled media resolver (`src/lib/media.ts`) with dual local
   and production delivery modes.
 - Build interactive islands: native `<dialog>` Search modal (`Cmd+K`) and
@@ -111,52 +111,45 @@ phases:
 
 ### 3.2 Engineering Tasks
 
-1. **Task 2.1: Content Collections & Zod Schemas**
+1. **Task 2.1: Content Collections & Zod Schemas (COMPLETED)**
    - Define `src/content.config.ts` with `stories` and `moments` collections.
-   - Port prototype sample data: 4 stories into `src/content/stories/*.md` and 6
-     moments into `src/content/moments/*.md`.
+   - Port prototype sample data: 4 stories into `src/content/stories/*.md` and
+     6 moments into `src/content/moments/*.md`.
    - Convert prototype `body` tuples into clean Markdown paragraphs, headings,
      and blockquotes.
-2. **Task 2.2: Media Processing & EXIF Privacy Pipeline**
+2. **Task 2.2: Media Processing & EXIF Privacy Pipeline (COMPLETED)**
    - Create `media/originals/` directory for staging high-res master photos.
-   - Implement `scripts/process-media.ts` utilizing `sharp` and `exif-reader`.
+   - Implement `scripts/process-media.mjs` utilizing `sharp` and EXIF rotation.
    - Apply `.rotate()` to ensure orientation is permanently preserved before
      stripping tags.
-   - Implement EXIF scrubbing: extract `DateTimeOriginal` and camera attributes
-     into `media-manifest.json`, while rigorously stripping GPS tags, serial
+   - Implement EXIF scrubbing: extract safe editorial attributes into
+     `media-manifest.json`, while rigorously stripping GPS tags, serial
      numbers, and personal identity metadata.
-   - Generate responsive WebP and AVIF variants (400w, 800w, 1600w) and 1:1
-     square thumbnails into git-ignored `public/media/`.
-   - Generate 16px blurred placeholder base64 strings (`blurDataURL`).
-3. **Task 2.3: Cloudflare R2 Publishing & Verification Tool**
-   - Implement `scripts/publish-media.ts` supporting authenticated uploads to
-     Cloudflare R2 Standard Storage using S3-compatible client SDK or rclone.
+   - Generate responsive WebP and AVIF variants (400w, 800w, 1600w) into
+     git-ignored `.local-media/`.
+3. **Task 2.3: Cloudflare R2 Publishing & Verification Tool (COMPLETED)**
+   - Implement `scripts/publish-media.mjs` supporting dry-run, local mock, and
+     production R2 upload modes.
    - Implement idempotent uploads using content-hashed keys.
-   - Implement upload verification: issue HTTP HEAD or S3 `headObject` checks
-     confirming all variants exist remotely before updating the manifest.
-   - Update `src/data/media-manifest.json` with storage keys and hashes.
-4. **Task 2.4: Decoupled Media Resolver Integration**
+   - Implement upload verification confirming remote objects before manifest
+     commit.
+4. **Task 2.4: Decoupled Media Resolver Integration (COMPLETED)**
    - Implement `src/lib/media.ts` resolving logical identifiers
      (`stories/forest-time/cover`) against `media-manifest.json`.
    - Resolve to local `/media/...` in development and `PUBLIC_MEDIA_BASE_URL`
      in production. Zero frontmatter edits needed when switching environments.
-5. **Task 2.5: Story & Moment Component Rendering**
-   - Implement `StoryCard.astro` (featured 2-column layout and recent 3-column
-     grid layout).
+5. **Task 2.5: Story & Moment Component Rendering (COMPLETED)**
+   - Implement `StoryCard.astro` (featured card and recent stories grid).
    - Implement `MomentCard.astro` (1:1 square photo card with album badge).
    - Implement dynamic routes `src/pages/stories/[...slug].astro` and
      `src/pages/moments/[...slug].astro`.
-6. **Task 2.6: Interactive Islands (Search & Lightbox)**
-   - Build client search script generating pre-indexed `search-index.json`
-     during build.
-   - Implement native `<dialog id="search-dialog">` with `Cmd+K` hotkey and
-     substring matching.
-   - Implement native `<dialog id="viewer">` with cyclic arrow navigation and
-     photo counter.
-7. **Task 2.7: Tag Directory & RSS Syndication**
-   - Implement `src/pages/tags/index.astro` aggregating tags and entry counts.
-   - Implement `src/pages/rss.xml.ts` using `@astrojs/rss` to generate valid
-     RSS 2.0 feeds.
+6. **Task 2.6: Interactive Islands: Search & Lightbox (COMPLETED)**
+   - Build client search script with pre-indexed `search-data.json`.
+   - Implement native `<dialog id="search-dialog">` with `Cmd+K` hotkey.
+   - Implement native `<dialog id="viewer">` with cyclic arrow navigation.
+7. **Task 2.7: Tag Directory & RSS Syndication (COMPLETED)**
+   - Implement `src/pages/tags/index.astro` and `src/pages/tags/[tag].astro`.
+   - Implement `src/pages/rss.xml.ts` and `src/pages/feed.xml.ts` feeds.
 
 ### 3.3 Deliverables
 - Validated content collections compiling Markdown to HTML.

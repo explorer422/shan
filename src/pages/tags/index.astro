@@ -1,28 +1,46 @@
 ---
+import { getCollection } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import { tagToSlug } from '../../lib/tag';
 
-const tags = [
-  'Forestry',
-  'Nature',
-  'Technology',
-  'Travel',
-  'Photography',
-  'Reflections',
-  'Daily life',
-];
+const stories = await getCollection('stories', ({ data }) => {
+  return import.meta.env.PROD ? !data.draft : true;
+});
+const moments = await getCollection('moments', ({ data }) => {
+  return import.meta.env.PROD ? !data.draft : true;
+});
+
+const tagMap = new Map<string, number>();
+
+for (const story of stories) {
+  for (const t of story.data.tags) {
+    tagMap.set(t, (tagMap.get(t) || 0) + 1);
+  }
+}
+for (const moment of moments) {
+  for (const t of moment.data.tags) {
+    tagMap.set(t, (tagMap.get(t) || 0) + 1);
+  }
+}
+
+const tags = Array.from(tagMap.entries()).sort((a, b) => {
+  return b[1] - a[1] || a[0].localeCompare(b[0]);
+});
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 ---
 
 <BaseLayout title="Explore Tags — 山 / SHAN">
   <section class="about">
     <div class="eyebrow">Explore</div>
     <h1>Follow a thread.</h1>
-    <p>Browse the journal by the themes that connect it.</p>
+    <p>Browse the journal by the things that connect it.</p>
     <div class="filters">
       {
-        tags.map((tag) => (
-          <button class="chip">
-            {tag}
-          </button>
+        tags.map(([tag, count]) => (
+          <a class="chip" href={`${base}/tags/${tagToSlug(tag)}/`}>
+            {tag} · {count}
+          </a>
         ))
       }
     </div>

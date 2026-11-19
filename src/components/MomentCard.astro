@@ -1,0 +1,30 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import { resolveMedia } from '../lib/media';
+import { formatDate } from '../lib/date';
+
+interface Props {
+  moment: CollectionEntry<'moments'>;
+}
+
+const { moment } = Astro.props;
+const { title, date, location, media } = moment.data;
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const momentUrl = `${base}/moments/${moment.id}/`;
+const cover = resolveMedia(media[0].id);
+const dateStr = formatDate(date).split(',')[0];
+---
+
+<a href={momentUrl} class="moment" data-tags={moment.data.tags.join(',')}>
+  <img
+    src={cover.src}
+    srcset={cover.srcSet}
+    alt={media[0].alt || title || 'Photo'}
+    loading="lazy"
+  />
+  {media.length > 1 && <span class="album-count">▧ {media.length}</span>}
+  <span class="moment-label">
+    <strong>{title}</strong>
+    <small>{location} · {dateStr}</small>
+  </span>
+</a>

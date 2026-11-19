@@ -1,0 +1,80 @@
+<dialog id="viewer" aria-label="Photo viewer">
+  <button class="close viewer-close" aria-label="Close photo viewer">
+    ✕
+  </button>
+  <div class="viewer-body">
+    <button id="prev" aria-label="Previous photo">←</button>
+    <img id="large-photo" alt="" />
+    <button id="next" aria-label="Next photo">→</button>
+  </div>
+  <div id="photo-caption"></div>
+</dialog>
+
+<script>
+  export interface LightboxItem {
+    src: string;
+    alt: string;
+    caption: string;
+    date: string;
+    location: string;
+  }
+
+  let album: LightboxItem[] = [];
+  let currentIndex = 0;
+
+  const viewer = document.getElementById(
+    'viewer'
+  ) as HTMLDialogElement | null;
+  const largePhoto = document.getElementById(
+    'large-photo'
+  ) as HTMLImageElement | null;
+  const photoCaption = document.getElementById('photo-caption');
+  const prevBtn = document.getElementById(
+    'prev'
+  ) as HTMLButtonElement | null;
+  const nextBtn = document.getElementById(
+    'next'
+  ) as HTMLButtonElement | null;
+  const closeBtn = viewer?.querySelector('.viewer-close');
+
+  function showPhoto() {
+    if (!album.length || !largePhoto || !photoCaption) return;
+    const item = album[currentIndex];
+    largePhoto.src = item.src;
+    largePhoto.alt = item.alt;
+    photoCaption.innerHTML = `
+      ${item.caption} &nbsp; · &nbsp; ${currentIndex + 1} / ${album.length}<br>
+      <span style="color:#b0ada8">${item.location} — ${item.date}</span>
+    `;
+    if (prevBtn) prevBtn.disabled = album.length < 2;
+    if (nextBtn) nextBtn.disabled = album.length < 2;
+  }
+
+  function step(delta: number) {
+    if (!album.length) return;
+    currentIndex = (currentIndex + delta + album.length) % album.length;
+    showPhoto();
+  }
+
+  prevBtn?.addEventListener('click', () => step(-1));
+  nextBtn?.addEventListener('click', () => step(1));
+  closeBtn?.addEventListener('click', () => viewer?.close());
+
+  viewer?.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') step(1);
+    if (e.key === 'ArrowLeft') step(-1);
+  });
+
+  declare global {
+    interface Window {
+      openLightbox: (items: LightboxItem[], startIndex?: number) => void;
+    }
+  }
+
+  window.openLightbox = (items: LightboxItem[], startIndex = 0) => {
+    album = items;
+    currentIndex = startIndex;
+    showPhoto();
+    viewer?.showModal();
+  };
+</script>

@@ -1,0 +1,46 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import { resolveMedia } from '../lib/media';
+import { formatDate } from '../lib/date';
+
+interface Props {
+  story: CollectionEntry<'stories'>;
+}
+
+const { story } = Astro.props;
+const {
+  title,
+  excerpt,
+  date,
+  readingTime,
+  tags,
+  lang,
+  coverMedia,
+} = story.data;
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const storyUrl = `${base}/stories/${story.id}/`;
+const media = resolveMedia(coverMedia.id);
+const dateStr = formatDate(date);
+---
+
+<a class="card" href={storyUrl} data-tags={tags.join(',')}>
+  <div class="image-wrap">
+    <img
+      src={media.src}
+      srcset={media.srcSet}
+      alt={coverMedia.alt || title}
+      loading="lazy"
+    />
+  </div>
+  <div class="card-copy">
+    <div class="tagline">{tags.join(' / ')}</div>
+    <h3 lang={lang}>{title}</h3>
+    <p class="excerpt">{excerpt}</p>
+    <div class="meta">
+      <time datetime={date.toISOString()}>{dateStr}</time>
+      <span>·</span>
+      <span>{readingTime || '5 min read'}</span>
+    </div>
+  </div>
+</a>

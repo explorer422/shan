@@ -356,7 +356,7 @@ Workspace & Repository Layout:
 -------------------------------------------------------------------------------
 project-root/
 ├── media/
-│   ├── originals/              # Local staging of master photos (GIT-IGNORED)
+│   ├── originals/              # Staging of master photos (GIT-IGNORED)
 │   │   ├── stories/
 │   │   │   └── forest-time/
 │   │   │       └── cover.jpg
@@ -365,12 +365,12 @@ project-root/
 │   │           ├── photo-01.jpg
 │   │           └── photo-02.jpg
 │   └── cache/                  # Build cache & hashes (GIT-IGNORED)
-├── .local-media/               # Local dev preview outputs (GIT-IGNORED)
+├── .local-media/               # Dev preview outputs (GIT-IGNORED)
 ├── public/                     # Static root (NO photographic media)
 │   └── favicon.svg             # Approved non-photographic UI asset
 ├── src/
 │   └── data/
-│       └── media-manifest.json # Media metadata & keys (COMMITTED TO GIT)
+│       └── media-manifest.json # Media metadata (COMMITTED TO GIT)
 ├── scripts/
 │   ├── process-media.ts        # Image processing & EXIF stripping
 │   ├── publish-media.ts        # R2 idempotent upload & verification
@@ -378,10 +378,10 @@ project-root/
 └── .gitignore                  # Explicit binary exclusion rules
 -------------------------------------------------------------------------------
 Outside Workspace:
-└── Author's Local Photo Library & External Backups (Primary master store)
+└── Author's Local Photo Library & Backups (Primary master store)
 -------------------------------------------------------------------------------
 Cloud Storage:
-└── Cloudflare R2 Bucket (Production store for published WebP/AVIF binaries)
+└── Cloudflare R2 Bucket (Production store for WebP/AVIF binaries)
 ```
 
 ### 5.2 13-Step Media Processing and Publishing Workflow

@@ -1,18 +1,22 @@
 ---
+import { getCollection } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import FeaturedStory from '../../components/FeaturedStory.astro';
+import StoryCard from '../../components/StoryCard.astro';
+import { getActiveTags } from '../../lib/tag';
+
+const allStories = await getCollection('stories', ({ data }) => {
+  return import.meta.env.PROD ? !data.draft : true;
+});
+
+allStories.sort((a, b) => b.data.date.getTime() - a.data.date.getTime());
+
+const featured = allStories[0];
+const recent = allStories.slice(1);
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 const aboutUrl = `${base}/about/`;
-const tags = [
-  'All',
-  'Forestry',
-  'Nature',
-  'Technology',
-  'Travel',
-  'Photography',
-  'Reflections',
-  'Daily life',
-];
+const tags = ['All', ...getActiveTags(allStories)];
 ---
 
 <BaseLayout title="Stories — 山 / SHAN">
@@ -29,20 +33,37 @@ const tags = [
         <button
           class={`chip ${tag === 'All' ? 'active' : ''}`}
           aria-pressed={tag === 'All' ? 'true' : 'false'}
+          data-tag={tag}
         >
           {tag}
         </button>
       ))
     }
-    <span class="count">STORIES</span>
+    <span class="count">{allStories.length} STORIES</span>
   </div>
 
-  <section class="empty">
-    <p>Stories collection initialized for Phase 1 visual scaffolding.</p>
-    <p class="hint">
-      Full Markdown stories and media pipeline will activate in Phase 2.
-    </p>
-  </section>
+  <div id="stories-content">
+    {featured && <FeaturedStory story={featured} />}
+
+    <div class="section-title">
+      <h2>RECENT STORIES</h2>
+      <span>Collected thoughts, as they come.</span>
+    </div>
+
+    <div class="cards">
+      {
+        recent.length > 0 ? (
+          recent.map((story) => <StoryCard story={story} />)
+        ) : (
+          <p class="excerpt">You’re all caught up in this collection.</p>
+        )
+      }
+    </div>
+  </div>
+
+  <p id="no-stories" class="empty" style="display:none">
+    No stories with this tag yet. Try another.
+  </p>
 
   <aside class="note">
     <div>
@@ -54,4 +75,63 @@ const tags = [
     </div>
     <a href={aboutUrl}>Meet the author ↗</a>
   </aside>
+
+  <script>
+    const chips =
+      document.querySelectorAll<HTMLButtonElement>('.filters .chip');
+    const countEl = document.querySelector<HTMLElement>('.filters .count');
+    const featuredEl =
+      document.querySelector<HTMLElement>('.featured');
+    const cardEls =
+      document.querySelectorAll<HTMLElement>('.card');
+    const noStoriesEl =
+      document.getElementById('no-stories');
+    const sectionTitleEl =
+      document.querySelector<HTMLElement>('.section-title');
+
+    function filterStories(selectedTag: string) {
+      let visibleCount = 0;
+      chips.forEach((c) => {
+        const active = c.dataset.tag === selectedTag;
+        c.classList.toggle('active', active);
+        c.setAttribute('aria-pressed', String(active));
+      });
+
+      if (featuredEl) {
+        const featTags = (featuredEl.dataset.tags || '').split(',');
+        const showFeat =
+          selectedTag === 'All' || featTags.includes(selectedTag);
+        featuredEl.style.display = showFeat ? '' : 'none';
+        if (showFeat) visibleCount++;
+      }
+
+      let recentVisible = 0;
+      cardEls.forEach((card) => {
+        const cardTags = (card.dataset.tags || '').split(',');
+        const showCard =
+          selectedTag === 'All' || cardTags.includes(selectedTag);
+        card.style.display = showCard ? '' : 'none';
+        if (showCard) {
+          visibleCount++;
+          recentVisible++;
+        }
+      });
+
+      if (sectionTitleEl) {
+        sectionTitleEl.style.display = recentVisible > 0 ? '' : 'none';
+      }
+      if (noStoriesEl) {
+        noStoriesEl.style.display = visibleCount === 0 ? '' : 'none';
+      }
+      if (countEl) {
+        countEl.textContent = `${visibleCount} STORIES`;
+      }
+    }
+
+    chips.forEach((chip) => {
+      chip.addEventListener('click', () => {
+        filterStories(chip.dataset.tag || 'All');
+      });
+    });
+  </script>
 </BaseLayout>

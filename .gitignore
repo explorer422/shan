@@ -20,6 +20,7 @@ media/cache/
 .local-media/
 local-media/
 public/media/
+.mock-r2/
 
 # Camera raw formats
 *.dng

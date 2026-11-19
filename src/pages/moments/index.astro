@@ -1,16 +1,18 @@
 ---
+import { getCollection } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import MomentCard from '../../components/MomentCard.astro';
+import { getActiveTags } from '../../lib/tag';
 
-const tags = [
-  'All',
-  'Forestry',
-  'Nature',
-  'Technology',
-  'Travel',
-  'Photography',
-  'Reflections',
-  'Daily life',
-];
+const allMoments = await getCollection('moments', ({ data }) => {
+  return import.meta.env.PROD ? !data.draft : true;
+});
+
+allMoments.sort((a, b) => b.data.date.getTime() - a.data.date.getTime());
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const aboutUrl = `${base}/about/`;
+const tags = ['All', ...getActiveTags(allMoments)];
 ---
 
 <BaseLayout title="Moments — 山 / SHAN">
@@ -27,18 +29,71 @@ const tags = [
         <button
           class={`chip ${tag === 'All' ? 'active' : ''}`}
           aria-pressed={tag === 'All' ? 'true' : 'false'}
+          data-tag={tag}
         >
           {tag}
         </button>
       ))
     }
-    <span class="count">MOMENTS</span>
+    <span class="count">{allMoments.length} MOMENTS</span>
   </div>
 
-  <section class="empty">
-    <p>Moments collection initialized for Phase 1 visual scaffolding.</p>
-    <p class="hint">
-      Photography grid and multi-image albums will activate in Phase 2.
-    </p>
-  </section>
+  <div class="photo-grid">
+    {allMoments.map((moment) => <MomentCard moment={moment} />)}
+  </div>
+
+  <p id="no-moments" class="empty" style="display:none">
+    No moments with this tag yet. Try another.
+  </p>
+
+  <aside class="note">
+    <div>
+      <h3>A little about this place</h3>
+      <p>
+        A personal collection of things I’m learning, seeing, and thinking
+        about.
+      </p>
+    </div>
+    <a href={aboutUrl}>Meet the author ↗</a>
+  </aside>
+
+  <script>
+    const chips =
+      document.querySelectorAll<HTMLButtonElement>('.filters .chip');
+    const countEl = document.querySelector<HTMLElement>('.filters .count');
+    const momentEls =
+      document.querySelectorAll<HTMLElement>('.moment');
+    const noMomentsEl =
+      document.getElementById('no-moments');
+
+    function filterMoments(selectedTag: string) {
+      let visibleCount = 0;
+      chips.forEach((c) => {
+        const active = c.dataset.tag === selectedTag;
+        c.classList.toggle('active', active);
+        c.setAttribute('aria-pressed', String(active));
+      });
+
+      momentEls.forEach((card) => {
+        const cardTags = (card.dataset.tags || '').split(',');
+        const showCard =
+          selectedTag === 'All' || cardTags.includes(selectedTag);
+        card.style.display = showCard ? '' : 'none';
+        if (showCard) visibleCount++;
+      });
+
+      if (noMomentsEl) {
+        noMomentsEl.style.display = visibleCount === 0 ? '' : 'none';
+      }
+      if (countEl) {
+        countEl.textContent = `${visibleCount} MOMENTS`;
+      }
+    }
+
+    chips.forEach((chip) => {
+      chip.addEventListener('click', () => {
+        filterMoments(chip.dataset.tag || 'All');
+      });
+    });
+  </script>
 </BaseLayout>

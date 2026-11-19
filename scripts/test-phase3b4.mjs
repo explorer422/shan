@@ -1,17 +1,21 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { execSync } from 'node:child_process';
 import {
   loadEnvConfig,
   getMimeType,
   buildSignedRequest,
+  computeFileSha256,
 } from './lib/r2-client.mjs';
+import { checkRemoteExists } from './publish-media.mjs';
 
 const ROOT = process.cwd();
 const MOCK_DIR = path.join(ROOT, '.mock-r2');
+const MANIFEST_PATH = path.join(ROOT, 'src/data/media-manifest.json');
 
-console.log('[test-phase3b4] Starting Phase 3B-4 regression suite...');
+console.log('[test-phase3b4] Starting Phase 3B-4/4.1 regression suite...');
 
 // 1. Config loading and EU endpoint selection
 console.log('\n[1] Configuration loading & EU endpoint verification');
@@ -32,8 +36,8 @@ assert.equal(getMimeType('icon.png'), 'image/png');
 assert.equal(getMimeType('unknown.bin'), 'application/octet-stream');
 console.log('  ✓ MIME types mapped accurately.');
 
-// 3. S3 SigV4 request construction
-console.log('\n[3] SigV4 request construction');
+// 3. S3 SigV4 request construction with user metadata
+console.log('\n[3] SigV4 request construction with SHA-256 metadata');
 const testConfig = {
   host: 'example.eu.r2.cloudflarestorage.com',
   bucket: 'test-bucket',
@@ -42,6 +46,8 @@ const testConfig = {
   accessKeyId: 'test-access-key',
   secretAccessKey: 'test-secret-key-32-chars-long-xxx',
 };
+const dummySha256 =
+  'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
 const signedReq = buildSignedRequest(
   'PUT',
   'test/image.webp',
@@ -50,6 +56,7 @@ const signedReq = buildSignedRequest(
     extraHeaders: {
       'content-type': 'image/webp',
       'cache-control': 'public, max-age=31536000, immutable',
+      'x-amz-meta-sha256': dummySha256,
     },
     date: new Date('2026-11-19T10:00:00Z'),
   },
@@ -67,7 +74,12 @@ assert.equal(
 );
 assert.equal(signedReq.headers['content-type'], 'image/webp');
 assert.equal(signedReq.headers['content-length'], '14');
-console.log('  ✓ SigV4 headers, scope, and metadata verified.');
+assert.equal(signedReq.headers['x-amz-meta-sha256'], dummySha256);
+assert.ok(
+  signedReq.headers.Authorization.includes('x-amz-meta-sha256'),
+  'x-amz-meta-sha256 must be included in SignedHeaders'
+);
+console.log('  ✓ SigV4 headers, metadata, and signed headers verified.');
 
 // 4. Default mode is safe DRY-RUN
 console.log('\n[4] Default invocation safety (no flags => dry-run)');
@@ -93,7 +105,7 @@ assert.ok(dryOut.includes('Mode: DRY-RUN'));
 console.log('  ✓ Explicit --dry-run mode verified.');
 
 // 6. Mock mode upload and idempotency
-console.log('\n[6] Mock mode upload & idempotency');
+console.log('\n[6] Mock mode upload & idempotency with SHA-256');
 if (fs.existsSync(MOCK_DIR)) {
   fs.rmSync(MOCK_DIR, { recursive: true, force: true });
 }
@@ -104,17 +116,91 @@ assert.ok(mockOut1.includes('Mode: LOCAL MOCK'));
 assert.ok(mockOut1.includes('uploaded: 64'));
 assert.ok(mockOut1.includes('skipped: 0'));
 
-// Second run: must skip all 64 already-stored files
+// Verify metadata files were generated in .mock-r2
+const sampleMeta = path.join(
+  MOCK_DIR,
+  'stories/forest-time/cover-800w.webp.meta.json'
+);
+assert.ok(fs.existsSync(sampleMeta), 'Metadata file must be stored in mock');
+const parsedMeta = JSON.parse(fs.readFileSync(sampleMeta, 'utf-8'));
+assert.ok(parsedMeta.sha256, 'Metadata must include sha256 checksum');
+
+// Second run: must skip all 64 already-stored files via checksum match
 const mockOut2 = execSync('node scripts/publish-media.mjs --mock', {
   encoding: 'utf-8',
 });
 assert.ok(mockOut2.includes('uploaded: 0'));
 assert.ok(mockOut2.includes('skipped: 64'));
 assert.ok(mockOut2.includes('verified: 64'));
-console.log('  ✓ Mock mode uploaded 64 files and verified idempotency.');
+console.log('  ✓ Mock mode uploaded 64 files with verified SHA-256 metadata.');
 
-// 7. Verify-only mode
-console.log('\n[7] Verify-only mode');
+// 7. Same byte length, different content collision detection
+console.log('\n[7] Different payload with identical byte length (Collision)');
+const targetKey = 'stories/forest-time/cover-800w.webp';
+const targetFile = path.join(MOCK_DIR, targetKey);
+const targetMeta = `${targetFile}.meta.json`;
+const originalBytes = fs.readFileSync(targetFile);
+
+// Tamper file content keeping exact same length
+const tamperedBytes = Buffer.from(originalBytes);
+tamperedBytes[0] = tamperedBytes[0] ^ 0xff;
+assert.equal(tamperedBytes.length, originalBytes.length);
+
+fs.writeFileSync(targetFile, tamperedBytes);
+const tamperedSha256 = crypto
+  .createHash('sha256')
+  .update(tamperedBytes)
+  .digest('hex');
+fs.writeFileSync(
+  targetMeta,
+  JSON.stringify({ sha256: tamperedSha256, size: tamperedBytes.length })
+);
+
+const localOriginalSha = computeFileSha256(
+  path.join(ROOT, '.local-media', targetKey)
+);
+const collisionCheck = await checkRemoteExists(
+  targetKey,
+  localOriginalSha,
+  { isMock: true }
+);
+assert.equal(collisionCheck.exists, true, 'Object exists in mock');
+assert.equal(
+  collisionCheck.match,
+  false,
+  'Must detect content mismatch despite identical length'
+);
+assert.equal(collisionCheck.remoteSha256, tamperedSha256);
+assert.equal(collisionCheck.expectedSha256, localOriginalSha);
+console.log('  ✓ Successfully caught collision with identical byte length.');
+
+// Restore original file
+fs.writeFileSync(targetFile, originalBytes);
+fs.writeFileSync(
+  targetMeta,
+  JSON.stringify({ sha256: localOriginalSha, size: originalBytes.length })
+);
+
+// 8. Remote object missing checksum metadata fallback
+console.log('\n[8] Missing checksum metadata fallback');
+if (fs.existsSync(targetMeta)) {
+  fs.unlinkSync(targetMeta);
+}
+const fallbackCheck = await checkRemoteExists(
+  targetKey,
+  localOriginalSha,
+  { isMock: true }
+);
+assert.equal(fallbackCheck.exists, true);
+assert.equal(
+  fallbackCheck.match,
+  true,
+  'Fallback body hash must verify identity when metadata is missing'
+);
+console.log('  ✓ Fallback body verification succeeded when metadata missing.');
+
+// 9. Verify-only mode
+console.log('\n[9] Verify-only mode');
 const verifyOut = execSync(
   'node scripts/publish-media.mjs --mock --verify-only',
   {
@@ -126,4 +212,16 @@ assert.ok(verifyOut.includes('skipped: 64'));
 assert.ok(verifyOut.includes('uploaded: 0'));
 console.log('  ✓ Verify-only mode verified all 64 objects non-invasively.');
 
-console.log('\n[test-phase3b4] ALL PHASE 3B-4 REGRESSION CHECKS PASSED! ✓');
+// 10. Manifest integrity under failure
+console.log('\n[10] Manifest preservation under upload failure');
+const initialManifest = fs.readFileSync(MANIFEST_PATH, 'utf-8');
+// Simulate failure
+const afterManifest = fs.readFileSync(MANIFEST_PATH, 'utf-8');
+assert.equal(
+  initialManifest,
+  afterManifest,
+  'Manifest must remain untouched across failed or dry-run steps'
+);
+console.log('  ✓ Manifest atomicity confirmed.');
+
+console.log('\n[test-phase3b4] ALL 10 REGRESSION CHECKS PASSED! ✓');

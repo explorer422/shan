@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -5,9 +6,10 @@ import {
   loadEnvConfig,
   getMimeType,
   sendS3Request,
+  computeFileSha256,
 } from './lib/r2-client.mjs';
 
-// ponytail: R2 publishing tool supporting dry-run, mock, and real S3 API
+// ponytail: R2 publishing tool with SHA-256 metadata integrity verification
 const ROOT = process.cwd();
 const LOCAL_MEDIA_DIR = path.join(ROOT, '.local-media');
 const MANIFEST_PATH = path.join(ROOT, 'src/data/media-manifest.json');
@@ -22,16 +24,22 @@ const isDryRun = args.includes('--dry-run') || (!isProd && !isMock);
 
 const r2Config = loadEnvConfig();
 
-console.log('[publish-media] R2 Media Publishing Tool');
-if (isVerifyOnly) {
-  const target = isMock ? 'LOCAL MOCK' : 'REMOTE R2';
-  console.log(`[publish-media] Mode: VERIFY-ONLY (${target})`);
-} else if (isMock) {
-  console.log('[publish-media] Mode: LOCAL MOCK (.mock-r2)');
-} else if (isProd) {
-  console.log(`[publish-media] Mode: PRODUCTION R2 (${r2Config.host})`);
-} else {
-  console.log('[publish-media] Mode: DRY-RUN (safe simulation)');
+const isMain =
+  process.argv[1] &&
+  fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);
+
+if (isMain) {
+  console.log('[publish-media] R2 Media Publishing Tool');
+  if (isVerifyOnly) {
+    const target = isMock ? 'LOCAL MOCK' : 'REMOTE R2';
+    console.log(`[publish-media] Mode: VERIFY-ONLY (${target})`);
+  } else if (isMock) {
+    console.log('[publish-media] Mode: LOCAL MOCK (.mock-r2)');
+  } else if (isProd) {
+    console.log(`[publish-media] Mode: PRODUCTION R2 (${r2Config.host})`);
+  } else {
+    console.log('[publish-media] Mode: DRY-RUN (safe simulation)');
+  }
 }
 
 if (!fs.existsSync(MANIFEST_PATH)) {
@@ -43,72 +51,141 @@ const manifest = JSON.parse(fs.readFileSync(MANIFEST_PATH, 'utf-8'));
 const items = Object.values(manifest.items);
 console.log(`[publish-media] Loaded ${items.length} items from manifest.`);
 
-export async function checkRemoteExists(key, localSize = null) {
-  if (isDryRun) {
-    return false;
-  }
-  if (isMock) {
+export async function checkRemoteExists(
+  key,
+  expectedSha256,
+  options = {}
+) {
+  const mockMode = options.isMock ?? isMock;
+  const dryMode = options.isDryRun ?? isDryRun;
+
+  if (mockMode) {
     const dest = path.join(MOCK_R2_DIR, key);
-    if (!fs.existsSync(dest)) return false;
-    if (localSize !== null) {
-      return fs.statSync(dest).size === localSize;
+    if (!fs.existsSync(dest)) {
+      return { exists: false };
     }
-    return true;
+    const metaPath = `${dest}.meta.json`;
+    let remoteSha256 = null;
+    if (fs.existsSync(metaPath)) {
+      try {
+        const meta = JSON.parse(fs.readFileSync(metaPath, 'utf-8'));
+        remoteSha256 = meta.sha256;
+      } catch {}
+    }
+    if (!remoteSha256) {
+      remoteSha256 = computeFileSha256(dest);
+    }
+    const match = remoteSha256 === expectedSha256;
+    return {
+      exists: true,
+      match,
+      remoteSha256,
+      expectedSha256,
+      verifiedBy: 'mock-meta',
+    };
   }
+
+  if (dryMode) {
+    return { exists: false };
+  }
+
   if (!r2Config.isConfigured) {
     throw new Error(
       'R2 credentials are required for remote operations in production mode.'
     );
   }
+
   try {
     const res = await sendS3Request('HEAD', key, {}, r2Config);
+    if (res.status === 404) {
+      return { exists: false };
+    }
     if (res.status !== 200) {
-      return false;
+      throw new Error(`Unexpected HEAD status ${res.status} for ${key}`);
     }
-    if (localSize !== null) {
-      const len = res.headers.get('content-length');
-      if (len && parseInt(len, 10) !== localSize) {
-        console.warn(
-          `[publish-media] Size mismatch for ${key}: ` +
-            `local=${localSize}, remote=${len}`
-        );
-        return false;
-      }
+
+    const remoteSha256 = res.headers.get('x-amz-meta-sha256');
+    if (remoteSha256) {
+      const match = remoteSha256 === expectedSha256;
+      return {
+        exists: true,
+        match,
+        remoteSha256,
+        expectedSha256,
+        verifiedBy: 'metadata',
+      };
     }
-    return true;
+
+    // Fallback: Metadata missing on existing object. GET and verify checksum.
+    console.warn(
+      `[publish-media] Object ${key} missing checksum header. ` +
+        'Issuing GET fallback...'
+    );
+    const getRes = await sendS3Request('GET', key, {}, r2Config);
+    if (!getRes.ok) {
+      throw new Error(`GET fallback failed for ${key}: HTTP ${getRes.status}`);
+    }
+    const arrayBuf = await getRes.arrayBuffer();
+    const downloadedSha256 = crypto
+      .createHash('sha256')
+      .update(Buffer.from(arrayBuf))
+      .digest('hex');
+    const match = downloadedSha256 === expectedSha256;
+    return {
+      exists: true,
+      match,
+      remoteSha256: downloadedSha256,
+      expectedSha256,
+      verifiedBy: 'get-fallback',
+    };
   } catch (err) {
     console.error(
       `[publish-media] Remote check error for ${key}:`,
       err.message
     );
-    return false;
+    throw err;
   }
 }
 
-export async function uploadVariant(localPath, key) {
+export async function uploadVariant(localPath, key, expectedSha256) {
   if (isDryRun) {
     console.log(`[publish-media] (dry-run) Would upload: ${key}`);
     return true;
-  }
-  if (isMock) {
-    const dest = path.join(MOCK_R2_DIR, key);
-    fs.mkdirSync(path.dirname(dest), { recursive: true });
-    fs.copyFileSync(localPath, dest);
-    const size = fs.statSync(dest).size;
-    console.log(`[publish-media] (mock) Stored: ${key} (${size} bytes)`);
-    return true;
-  }
-  if (!r2Config.isConfigured) {
-    throw new Error('R2 credentials are not configured in .env');
   }
 
   const fileData = fs.readFileSync(localPath);
   const contentType = getMimeType(localPath);
   const cacheControl = 'public, max-age=31536000, immutable';
 
+  if (isMock) {
+    const dest = path.join(MOCK_R2_DIR, key);
+    fs.mkdirSync(path.dirname(dest), { recursive: true });
+    fs.copyFileSync(localPath, dest);
+    const metaPath = `${dest}.meta.json`;
+    fs.writeFileSync(
+      metaPath,
+      JSON.stringify(
+        {
+          sha256: expectedSha256,
+          size: fileData.length,
+          contentType,
+          cacheControl,
+        },
+        null,
+        2
+      )
+    );
+    console.log(`[publish-media] (mock) Stored: ${key} (${fileData.length} B)`);
+    return true;
+  }
+
+  if (!r2Config.isConfigured) {
+    throw new Error('R2 credentials are not configured in .env');
+  }
+
   console.log(
     `[publish-media] (prod) Uploading ${key} ` +
-      `(${fileData.length} bytes, ${contentType})...`
+      `(${fileData.length} B, sha256:${expectedSha256.slice(0, 8)})...`
   );
   const res = await sendS3Request(
     'PUT',
@@ -118,6 +195,7 @@ export async function uploadVariant(localPath, key) {
       extraHeaders: {
         'content-type': contentType,
         'cache-control': cacheControl,
+        'x-amz-meta-sha256': expectedSha256,
       },
     },
     r2Config
@@ -138,6 +216,7 @@ export async function publishAll() {
     skipped: 0,
     verified: 0,
     failed: 0,
+    collisions: 0,
   };
 
   for (const item of items) {
@@ -152,13 +231,36 @@ export async function publishAll() {
         results.failed++;
         break;
       }
-      const localSize = fs.statSync(localFile).size;
+      const expectedSha256 = computeFileSha256(localFile);
 
-      const alreadyExists = await checkRemoteExists(key, localSize);
-      if (alreadyExists) {
-        results.skipped++;
-        results.verified++;
-        continue;
+      let check;
+      try {
+        check = await checkRemoteExists(key, expectedSha256);
+      } catch {
+        allVariantsOk = false;
+        results.failed++;
+        break;
+      }
+
+      if (check.exists) {
+        if (check.match) {
+          // Already uploaded with matching cryptographic checksum
+          results.skipped++;
+          results.verified++;
+          continue;
+        } else {
+          // COLLISION / MISMATCH: Remote file exists with different content!
+          console.error(
+            `[publish-media] COLLISION DETECTED for ${key}!\n` +
+              `  Expected SHA-256: ${expectedSha256}\n` +
+              `  Remote SHA-256:   ${check.remoteSha256}\n` +
+              '  Refusing to overwrite existing remote object.'
+          );
+          allVariantsOk = false;
+          results.failed++;
+          results.collisions++;
+          break;
+        }
       }
 
       if (isVerifyOnly) {
@@ -168,7 +270,7 @@ export async function publishAll() {
         break;
       }
 
-      const ok = await uploadVariant(localFile, key);
+      const ok = await uploadVariant(localFile, key, expectedSha256);
       if (!ok) {
         allVariantsOk = false;
         results.failed++;
@@ -176,13 +278,14 @@ export async function publishAll() {
       }
       results.uploaded++;
 
-      const verified = isDryRun
-        ? true
-        : await checkRemoteExists(key, localSize);
-      if (verified) {
+      const postCheck = isDryRun
+        ? { exists: true, match: true }
+        : await checkRemoteExists(key, expectedSha256);
+
+      if (postCheck.exists && postCheck.match) {
         results.verified++;
       } else {
-        console.error(`[publish-media] Upload verification failed: ${key}`);
+        console.error(`[publish-media] Verification failed after PUT: ${key}`);
         allVariantsOk = false;
         results.failed++;
         break;
@@ -200,10 +303,6 @@ export async function publishAll() {
   console.log('[publish-media] Summary:', results);
   return results;
 }
-
-const isMain =
-  process.argv[1] &&
-  fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);
 
 if (isMain) {
   publishAll().catch((err) => {

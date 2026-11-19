@@ -46,6 +46,15 @@ function sha256Hex(data) {
   return crypto.createHash('sha256').update(data).digest('hex');
 }
 
+export function computeFileSha256(filePath) {
+  const data = fs.readFileSync(filePath);
+  return sha256Hex(data);
+}
+
+export function computeBufferSha256(buffer) {
+  return sha256Hex(buffer);
+}
+
 export function getSigningKey(secret, dateStamp, regionName, serviceName) {
   const kDate = hmac(`AWS4${secret}`, dateStamp);
   const kRegion = hmac(kDate, regionName);

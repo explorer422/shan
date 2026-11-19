@@ -40,8 +40,9 @@ function localMediaDevPlugin() {
 
 export default defineConfig({
   output: 'static',
-  site: process.env.ASTRO_SITE || 'https://username.github.io',
+  site: process.env.ASTRO_SITE || 'https://shan.page',
   base: process.env.ASTRO_BASE || '/',
+  trailingSlash: 'always',
   vite: {
     plugins: [
       tailwindcss(),

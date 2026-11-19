@@ -1,0 +1,60 @@
+name: Deploy to GitHub Pages
+
+on:
+  # Initially triggered only manually per Phase 3A-2 requirements
+  workflow_dispatch:
+
+concurrency:
+  group: 'pages'
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install dependencies reproducibly
+        run: npm ci
+
+      - name: Run Astro check
+        run: npm run check
+
+      - name: Pre-build media isolation check
+        run: npm run verify:isolation
+
+      - name: Build static production site
+        env:
+          ASTRO_SITE: 'https://shan.page'
+          ASTRO_BASE: '/'
+          PUBLIC_MEDIA_BASE_URL: 'https://media.shan.page'
+        run: npm run build
+
+      - name: Post-build media isolation check (verifies dist/)
+        run: npm run verify:isolation
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './dist'
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

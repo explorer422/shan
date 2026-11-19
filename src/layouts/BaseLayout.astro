@@ -13,6 +13,7 @@ interface Props {
   ogType?: string;
   image?: string;
   article?: boolean;
+  is404?: boolean;
 }
 
 const {
@@ -22,6 +23,7 @@ const {
   ogType: initialOgType,
   image,
   article = false,
+  is404: propIs404,
 } = Astro.props;
 
 const ogType = initialOgType || (article ? 'article' : 'website');
@@ -31,6 +33,21 @@ const faviconSvgUrl = `${base}/favicon.svg`;
 const faviconIcoUrl = `${base}/favicon.ico`;
 const favicon32Url = `${base}/favicon-32x32.png`;
 const appleTouchIconUrl = `${base}/apple-touch-icon.png`;
+
+const is404 =
+  propIs404 ??
+  (Astro.url.pathname === '/404' ||
+    Astro.url.pathname === '/404/' ||
+    Astro.url.pathname.endsWith('/404.html'));
+
+const siteUrl = Astro.site ?? new URL('https://shan.page');
+// ponytail: Ensure trailing slash consistency on canonical path
+let canonicalPath = Astro.url.pathname;
+if (!is404 && !canonicalPath.endsWith('/')) {
+  canonicalPath += '/';
+}
+const canonicalURL = new URL(canonicalPath, siteUrl);
+const rssUrl = new URL(`${base}/rss.xml`, siteUrl).href;
 ---
 
 <!doctype html>
@@ -40,6 +57,16 @@ const appleTouchIconUrl = `${base}/apple-touch-icon.png`;
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{title}</title>
     <meta name="description" content={description} />
+    {
+      is404 ? (
+        <meta name="robots" content="noindex" />
+      ) : (
+        <>
+          <link rel="canonical" href={canonicalURL.href} />
+          <meta property="og:url" content={canonicalURL.href} />
+        </>
+      )
+    }
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:type" content={ogType} />
@@ -48,6 +75,12 @@ const appleTouchIconUrl = `${base}/apple-touch-icon.png`;
     <meta name="twitter:description" content={description} />
     {image && <meta property="og:image" content={image} />}
     {image && <meta name="twitter:image" content={image} />}
+    <link
+      rel="alternate"
+      type="application/rss+xml"
+      title="SHAN — Stories & Moments"
+      href={rssUrl}
+    />
     <link rel="icon" type="image/svg+xml" href={faviconSvgUrl} />
     <link rel="alternate icon" href={faviconIcoUrl} sizes="any" />
     <link

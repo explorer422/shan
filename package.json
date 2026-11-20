@@ -9,12 +9,10 @@
     "preview": "ASTRO_TELEMETRY_DISABLED=1 astro preview",
     "check": "ASTRO_TELEMETRY_DISABLED=1 astro check",
     "verify:isolation": "node scripts/verify-isolation.mjs",
-    "test:phase1": "node scripts/test-phase1.mjs",
-    "test:phase2": "node scripts/test-phase2.mjs",
-    "test:phase3b4": "node scripts/test-phase3b4.mjs",
-    "test:phase3b6": "node scripts/test-phase3b6.mjs",
-    "test:phase4b1": "node scripts/test-phase4b1-resolution.mjs",
-    "test:phase4b3": "node scripts/test-phase4b3-scoped.mjs",
+    "test:resolution": "node scripts/test-media-resolution.mjs",
+    "test:pipeline": "node scripts/test-image-pipeline.mjs",
+    "test:publisher": "node scripts/test-media-publisher.mjs",
+    "test:build": "node scripts/test-site-build.mjs",
     "test": "node scripts/test-all.mjs"
   },
   "devDependencies": {

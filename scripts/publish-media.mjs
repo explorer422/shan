@@ -12,7 +12,9 @@ import {
 // ponytail: R2 publishing tool with SHA-256 metadata integrity verification
 const ROOT = process.cwd();
 const LOCAL_MEDIA_DIR = path.join(ROOT, '.local-media');
-const MANIFEST_PATH = path.join(ROOT, 'src/data/media-manifest.json');
+const MANIFEST_PATH =
+  process.env.SHAN_MANIFEST_PATH ||
+  path.join(ROOT, 'src/data/media-manifest.json');
 const MOCK_R2_DIR = path.join(ROOT, '.mock-r2');
 
 const args = process.argv.slice(2);

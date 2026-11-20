@@ -35,14 +35,18 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
     <div class="eyebrow">Explore</div>
     <h1>Follow a thread.</h1>
     <p>Browse the journal by the things that connect it.</p>
-    <div class="filters">
-      {
-        tags.map(([tag, count]) => (
-          <a class="chip" href={`${base}/tags/${tagToSlug(tag)}/`}>
-            {tag} · {count}
-          </a>
-        ))
-      }
-    </div>
+    {
+      tags.length === 0 ? (
+        <p class="empty">No tags available yet.</p>
+      ) : (
+        <div class="filters">
+          {tags.map(([tag, count]) => (
+            <a class="chip" href={`${base}/tags/${tagToSlug(tag)}/`}>
+              {tag} · {count}
+            </a>
+          ))}
+        </div>
+      )
+    }
   </section>
 </BaseLayout>

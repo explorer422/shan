@@ -79,6 +79,7 @@ export interface ResolvedMedia {
 export function resolveMedia(mediaId: string): ResolvedMedia {
   const g = globalThis as {
     process?: { env?: Record<string, string | undefined> };
+    __SHAN_TEST_MANIFEST__?: typeof manifestData;
   };
   const isDev =
     import.meta.env?.DEV ?? (g.process?.env?.NODE_ENV !== 'production');
@@ -87,7 +88,8 @@ export function resolveMedia(mediaId: string): ResolvedMedia {
     g.process?.env?.PUBLIC_MEDIA_BASE_URL;
 
   const cleanId = mediaId.replace(/^media:/, '');
-  const items = manifestData.items as Record<string, MediaItem>;
+  const activeManifest = g.__SHAN_TEST_MANIFEST__ || manifestData;
+  const items = activeManifest.items as Record<string, MediaItem>;
   const item = items[cleanId];
 
   if (!item) {

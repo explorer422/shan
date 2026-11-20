@@ -38,9 +38,17 @@ const tags = ['All', ...getActiveTags(allMoments)];
     <span class="count">{allMoments.length} MOMENTS</span>
   </div>
 
-  <div class="photo-grid">
-    {allMoments.map((moment) => <MomentCard moment={moment} />)}
-  </div>
+  {
+    allMoments.length === 0 ? (
+      <p class="empty">No moments published yet.</p>
+    ) : (
+      <div class="photo-grid">
+        {allMoments.map((moment) => (
+          <MomentCard moment={moment} />
+        ))}
+      </div>
+    )
+  }
 
   <p id="no-moments" class="empty" style="display:none">
     No moments with this tag yet. Try another.

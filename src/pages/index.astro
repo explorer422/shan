@@ -42,24 +42,30 @@ const tags = ['All', ...getActiveTags(allStories)];
     <span class="count">{allStories.length} STORIES</span>
   </div>
 
-  <div id="stories-content">
-    {featured && <FeaturedStory story={featured} />}
+  {
+    allStories.length === 0 ? (
+      <p class="empty">No stories published yet.</p>
+    ) : (
+      <div id="stories-content">
+        {featured && <FeaturedStory story={featured} />}
 
-    <div class="section-title">
-      <h2>RECENT STORIES</h2>
-      <span>Collected thoughts, as they come.</span>
-    </div>
+        {recent.length > 0 && (
+          <>
+            <div class="section-title">
+              <h2>RECENT STORIES</h2>
+              <span>Collected thoughts, as they come.</span>
+            </div>
 
-    <div class="cards">
-      {
-        recent.length > 0 ? (
-          recent.map((story) => <StoryCard story={story} />)
-        ) : (
-          <p class="excerpt">You’re all caught up in this collection.</p>
-        )
-      }
-    </div>
-  </div>
+            <div class="cards">
+              {recent.map((story) => (
+                <StoryCard story={story} />
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+    )
+  }
 
   <p id="no-stories" class="empty" style="display:none">
     No stories with this tag yet. Try another.

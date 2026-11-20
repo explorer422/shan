@@ -1,0 +1,126 @@
+{
+  "version": "2.0",
+  "generatedAt": "2026-11-20T06:15:21.974Z",
+  "items": {
+    "test/sample-story/cover": {
+      "id": "test/sample-story/cover",
+      "storageKeyPrefix": "test/sample-story/cover",
+      "format": "webp",
+      "width": 1600,
+      "height": 1067,
+      "aspectRatio": 1.5,
+      "contentHash": "sha256-test-story-fixture-hash",
+      "variants": {
+        "thumb400": {
+          "key": "test/sample-story/cover-400w-cb79ebf3878aaff9b840314968e266190c69a7a51e6475e45244ba925be50a43.webp",
+          "w": 400,
+          "h": 267
+        },
+        "card800": {
+          "key": "test/sample-story/cover-800w-678f46fa05fc650b2554662adc3aa34dbb0c3c904af3f7e2ad0518aa512c131c.webp",
+          "w": 800,
+          "h": 534
+        },
+        "full1600": {
+          "key": "test/sample-story/cover-1600w-2e87919af35265f185a936e1312349b844d4a0f3ced5218ca278eb2517a77364.webp",
+          "w": 1600,
+          "h": 1067
+        },
+        "avif1600": {
+          "key": "test/sample-story/cover-1600w-72076cc6b18f2d8fe865c5460235ba78118417fc91af8effc307522a10df5f20.avif",
+          "w": 1600,
+          "h": 1067
+        }
+      },
+      "metadata": {
+        "captureDate": "2026-11-20T00:00:00.000Z",
+        "cameraModel": "Fujifilm X-T5",
+        "lens": "XF 23mm F1.4 R LM WR",
+        "focalLength": "23mm",
+        "aperture": "f/2.8",
+        "shutterSpeed": "1/250s",
+        "iso": 160
+      }
+    },
+    "test/sample-moment/photo-01": {
+      "id": "test/sample-moment/photo-01",
+      "storageKeyPrefix": "test/sample-moment/photo-01",
+      "format": "webp",
+      "width": 1600,
+      "height": 1067,
+      "aspectRatio": 1.5,
+      "contentHash": "sha256-test-moment1-fixture-hash",
+      "variants": {
+        "thumb400": {
+          "key": "test/sample-moment/photo-01-400w-20ed7e8a7189a7dffb3ae412d8776636fe76a398514041e6ea799827deccb034.webp",
+          "w": 400,
+          "h": 400
+        },
+        "card800": {
+          "key": "test/sample-moment/photo-01-800w-678f46fa05fc650b2554662adc3aa34dbb0c3c904af3f7e2ad0518aa512c131c.webp",
+          "w": 800,
+          "h": 534
+        },
+        "full1600": {
+          "key": "test/sample-moment/photo-01-1600w-2e87919af35265f185a936e1312349b844d4a0f3ced5218ca278eb2517a77364.webp",
+          "w": 1600,
+          "h": 1067
+        },
+        "avif1600": {
+          "key": "test/sample-moment/photo-01-1600w-72076cc6b18f2d8fe865c5460235ba78118417fc91af8effc307522a10df5f20.avif",
+          "w": 1600,
+          "h": 1067
+        }
+      },
+      "metadata": {
+        "captureDate": "2026-11-20T00:00:00.000Z",
+        "cameraModel": "Fujifilm X-T5",
+        "lens": "XF 23mm F1.4 R LM WR",
+        "focalLength": "23mm",
+        "aperture": "f/2.8",
+        "shutterSpeed": "1/250s",
+        "iso": 160
+      }
+    },
+    "test/sample-moment/photo-02": {
+      "id": "test/sample-moment/photo-02",
+      "storageKeyPrefix": "test/sample-moment/photo-02",
+      "format": "webp",
+      "width": 1600,
+      "height": 1067,
+      "aspectRatio": 1.5,
+      "contentHash": "sha256-test-moment2-fixture-hash",
+      "variants": {
+        "thumb400": {
+          "key": "test/sample-moment/photo-02-400w-20ed7e8a7189a7dffb3ae412d8776636fe76a398514041e6ea799827deccb034.webp",
+          "w": 400,
+          "h": 400
+        },
+        "card800": {
+          "key": "test/sample-moment/photo-02-800w-678f46fa05fc650b2554662adc3aa34dbb0c3c904af3f7e2ad0518aa512c131c.webp",
+          "w": 800,
+          "h": 534
+        },
+        "full1600": {
+          "key": "test/sample-moment/photo-02-1600w-2e87919af35265f185a936e1312349b844d4a0f3ced5218ca278eb2517a77364.webp",
+          "w": 1600,
+          "h": 1067
+        },
+        "avif1600": {
+          "key": "test/sample-moment/photo-02-1600w-72076cc6b18f2d8fe865c5460235ba78118417fc91af8effc307522a10df5f20.avif",
+          "w": 1600,
+          "h": 1067
+        }
+      },
+      "metadata": {
+        "captureDate": "2026-11-20T00:00:00.000Z",
+        "cameraModel": "Fujifilm X-T5",
+        "lens": "XF 23mm F1.4 R LM WR",
+        "focalLength": "23mm",
+        "aperture": "f/2.8",
+        "shutterSpeed": "1/250s",
+        "iso": 160
+      }
+    }
+  }
+}

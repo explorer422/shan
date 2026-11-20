@@ -2,8 +2,11 @@ import assert from 'node:assert/strict';
 import stream from 'node:stream';
 import { resolveMedia } from '../src/lib/media.ts';
 import astroConfig from '../astro.config.mjs';
+import { setupTestFixtures } from './test-fixture.mjs';
 
-console.log('[test-phase4b1] Starting Phase 4B-1 Resolution Suite...');
+const { manifest } = await setupTestFixtures();
+
+console.log('[test-media-resolution] Starting Media Resolution Suite...');
 
 const g = globalThis;
 const origEnv = {
@@ -13,45 +16,47 @@ const origEnv = {
 
 try {
   // -------------------------------------------------------------------------
-  // Case 1: Local Dev with local variant present on disk
+  // Case 1: Local Dev with local variant present on disk resolves to /media
   // -------------------------------------------------------------------------
   console.log('\n[Case 1] Local dev: Local variant on disk resolves to /media');
   g.process.env.NODE_ENV = 'development';
   g.process.env.PUBLIC_MEDIA_BASE_URL = 'https://media.shan.page';
 
-  const localRes = resolveMedia('stories/forest-time/cover');
+  const localRes = resolveMedia('test/sample-story/cover');
   assert.ok(
     localRes.src.startsWith('/media/'),
     `Expected src to start with /media/, got: ${localRes.src}`
   );
   assert.ok(
-    localRes.srcSet.includes('/media/stories/forest-time/cover-400w-'),
+    localRes.srcSet.includes('/media/test/sample-story/cover-400w-'),
     'Expected srcSet to contain /media/ keys'
   );
   assert.ok(
     localRes.thumbnailSrc.startsWith('/media/'),
     'Expected thumbnailSrc to start with /media/'
   );
+  assert.equal(localRes.width, 1600);
+  assert.equal(localRes.height, 1067);
   console.log('  ✓ Local variant resolved through /media during dev.');
 
   // -------------------------------------------------------------------------
-  // Case 2: Local Dev with local variant absent on disk
+  // Case 2: Local Dev with local variant absent on disk falls back to CDN
   // -------------------------------------------------------------------------
   console.log('\n[Case 2] Local dev: Missing local variant falls back to R2');
   const origCwd = g.process.cwd;
   g.process.cwd = () => '/tmp';
   try {
-    const remoteFallback = resolveMedia('stories/forest-time/cover');
+    const remoteFallback = resolveMedia('test/sample-story/cover');
     assert.ok(
       remoteFallback.src.startsWith('https://media.shan.page/'),
       `Expected CDN src, got: ${remoteFallback.src}`
     );
     console.log('  ✓ Missing local variant fell back to R2.');
 
-    // Case 3: Local Dev with missing local variant and unset base URL
+    // Case 3: Local Dev with missing variant and unset base URL
     console.log('\n[Case 3] Local dev: Missing variant with unset base');
     delete g.process.env.PUBLIC_MEDIA_BASE_URL;
-    const offlineFallback = resolveMedia('stories/forest-time/cover');
+    const offlineFallback = resolveMedia('test/sample-story/cover');
     assert.ok(
       offlineFallback.src.startsWith('/media/'),
       `Expected /media/, got: ${offlineFallback.src}`
@@ -69,7 +74,7 @@ try {
   g.process.env.NODE_ENV = 'production';
   g.process.env.PUBLIC_MEDIA_BASE_URL = 'https://media.shan.page';
 
-  const prodRes = resolveMedia('stories/forest-time/cover');
+  const prodRes = resolveMedia('test/sample-story/cover');
   assert.ok(
     prodRes.src.startsWith('https://media.shan.page/'),
     `Expected prod src to start with CDN URL, got: ${prodRes.src}`
@@ -90,7 +95,7 @@ try {
   console.log('\n[Case 5] Production mode: Missing PUBLIC_MEDIA_BASE_URL');
   delete g.process.env.PUBLIC_MEDIA_BASE_URL;
   assert.throws(
-    () => resolveMedia('stories/forest-time/cover'),
+    () => resolveMedia('test/sample-story/cover'),
     /PUBLIC_MEDIA_BASE_URL/,
     'Must throw error when PUBLIC_MEDIA_BASE_URL is missing in prod'
   );
@@ -138,9 +143,7 @@ try {
     headers7a[k] = v;
   };
   const testCover =
-    '/media/stories/forest-time/' +
-    'cover-800w-678f46fa05fc650b2554662adc3aa34dbb0c3c904af3f7e2ad0518aa' +
-    '512c131c.webp';
+    `/media/${manifest.items['test/sample-story/cover'].variants.card800.key}`;
   const streamResult = middlewareHandler(
     { url: testCover },
     mockRes7a,
@@ -182,4 +185,6 @@ try {
   }
 }
 
-console.log('\n[test-phase4b1] ALL RESOLUTION TESTS PASSED SUCCESSFULLY! ✓');
+console.log(
+  '\n[test-media-resolution] ALL RESOLUTION CHECKS PASSED SUCCESSFULLY! ✓'
+);

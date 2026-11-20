@@ -3,6 +3,13 @@ import tailwindcss from '@tailwindcss/vite';
 import fs from 'node:fs';
 import path from 'node:path';
 
+// ponytail: Ensure .env is loaded in dev before Vite server config
+if (typeof process.loadEnvFile === 'function' && fs.existsSync('.env')) {
+  try {
+    process.loadEnvFile();
+  } catch {}
+}
+
 // ponytail: Dev-only middleware serving local media without polluting dist/
 function localMediaDevPlugin() {
   return {
@@ -30,6 +37,15 @@ function localMediaDevPlugin() {
             const mime = mimeMap[ext] || 'application/octet-stream';
             res.setHeader('Content-Type', mime);
             return fs.createReadStream(localPath).pipe(res);
+          } else if (process.env.PUBLIC_MEDIA_BASE_URL) {
+            const remoteBase = process.env.PUBLIC_MEDIA_BASE_URL.replace(
+              /\/$/,
+              ''
+            );
+            res.writeHead(302, {
+              Location: `${remoteBase}/${relPath}`,
+            });
+            return res.end();
           }
         }
         next();

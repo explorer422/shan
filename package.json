@@ -13,6 +13,8 @@
     "test:phase2": "node scripts/test-phase2.mjs",
     "test:phase3b4": "node scripts/test-phase3b4.mjs",
     "test:phase3b6": "node scripts/test-phase3b6.mjs",
+    "test:phase4b1": "node scripts/test-phase4b1-resolution.mjs",
+    "test:phase4b3": "node scripts/test-phase4b3-scoped.mjs",
     "test": "node scripts/test-all.mjs"
   },
   "devDependencies": {

@@ -106,6 +106,9 @@ console.log('  ✓ Explicit --dry-run mode verified.');
 
 // 6. Mock mode upload and idempotency
 console.log('\n[6] Mock mode upload & idempotency with SHA-256');
+const manifestData = JSON.parse(fs.readFileSync(MANIFEST_PATH, 'utf-8'));
+const totalVariants = Object.keys(manifestData.items).length * 4;
+
 if (fs.existsSync(MOCK_DIR)) {
   fs.rmSync(MOCK_DIR, { recursive: true, force: true });
 }
@@ -113,11 +116,10 @@ const mockOut1 = execSync('node scripts/publish-media.mjs --mock', {
   encoding: 'utf-8',
 });
 assert.ok(mockOut1.includes('Mode: LOCAL MOCK'));
-assert.ok(mockOut1.includes('uploaded: 64'));
+assert.ok(mockOut1.includes(`uploaded: ${totalVariants}`));
 assert.ok(mockOut1.includes('skipped: 0'));
 
 // Verify metadata files were generated in .mock-r2
-const manifestData = JSON.parse(fs.readFileSync(MANIFEST_PATH, 'utf-8'));
 const targetKey =
   manifestData.items['stories/forest-time/cover'].variants.card800.key;
 const sampleMeta = path.join(MOCK_DIR, `${targetKey}.meta.json`);
@@ -125,14 +127,16 @@ assert.ok(fs.existsSync(sampleMeta), 'Metadata file must be stored in mock');
 const parsedMeta = JSON.parse(fs.readFileSync(sampleMeta, 'utf-8'));
 assert.ok(parsedMeta.sha256, 'Metadata must include sha256 checksum');
 
-// Second run: must skip all 64 already-stored files via checksum match
+// Second run: must skip all stored files via checksum match
 const mockOut2 = execSync('node scripts/publish-media.mjs --mock', {
   encoding: 'utf-8',
 });
 assert.ok(mockOut2.includes('uploaded: 0'));
-assert.ok(mockOut2.includes('skipped: 64'));
-assert.ok(mockOut2.includes('verified: 64'));
-console.log('  ✓ Mock mode uploaded 64 files with verified SHA-256 metadata.');
+assert.ok(mockOut2.includes(`skipped: ${totalVariants}`));
+assert.ok(mockOut2.includes(`verified: ${totalVariants}`));
+console.log(
+  `  ✓ Mock mode uploaded ${totalVariants} files with verified SHA-256.`
+);
 
 // 7. Same byte length, different content collision detection
 console.log('\n[7] Different payload with identical byte length (Collision)');
@@ -196,7 +200,7 @@ assert.equal(
   true,
   'Fallback body hash must verify identity when metadata is missing'
 );
-console.log('  ✓ Fallback body verification succeeded when metadata missing.');
+console.log('  ✓ Fallback body verification succeeded on missing metadata.');
 
 // 9. Verify-only mode
 console.log('\n[9] Verify-only mode');
@@ -207,9 +211,11 @@ const verifyOut = execSync(
   }
 );
 assert.ok(verifyOut.includes('Mode: VERIFY-ONLY'));
-assert.ok(verifyOut.includes('skipped: 64'));
+assert.ok(verifyOut.includes(`skipped: ${totalVariants}`));
 assert.ok(verifyOut.includes('uploaded: 0'));
-console.log('  ✓ Verify-only mode verified all 64 objects non-invasively.');
+console.log(
+  `  ✓ Verify-only mode verified all ${totalVariants} objects.`
+);
 
 // 10. Manifest integrity under failure
 console.log('\n[10] Manifest preservation under upload failure');

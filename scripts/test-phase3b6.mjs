@@ -97,8 +97,15 @@ for (const item of items) {
     verifiedVariantCount++;
   }
 }
-assert.equal(verifiedVariantCount, 64, 'Must verify all 64 variants');
-console.log('  ✓ All 64 variant files exactly match Manifest dimensions.');
+const expectedVariants = items.length * 4;
+assert.equal(
+  verifiedVariantCount,
+  expectedVariants,
+  `Must verify all ${expectedVariants} variants`
+);
+console.log(
+  `  ✓ All ${expectedVariants} variant files match Manifest dimensions.`
+);
 
 // 5. No key collision is accepted silently
 console.log('\n[5] Key collision rejection');
@@ -133,16 +140,18 @@ if (fs.existsSync(MOCK_DIR)) {
 const mockRun1 = execSync('node scripts/publish-media.mjs --mock', {
   encoding: 'utf-8',
 });
-assert.ok(mockRun1.includes('uploaded: 64'));
+assert.ok(mockRun1.includes(`uploaded: ${expectedVariants}`));
 assert.ok(mockRun1.includes('skipped: 0'));
 
 const mockRun2 = execSync('node scripts/publish-media.mjs --mock', {
   encoding: 'utf-8',
 });
 assert.ok(mockRun2.includes('uploaded: 0'));
-assert.ok(mockRun2.includes('skipped: 64'));
-assert.ok(mockRun2.includes('verified: 64'));
-console.log('  ✓ Repeated publication skips all 64 identical assets.');
+assert.ok(mockRun2.includes(`skipped: ${expectedVariants}`));
+assert.ok(mockRun2.includes(`verified: ${expectedVariants}`));
+console.log(
+  `  ✓ Repeated publication skips all ${expectedVariants} identical assets.`
+);
 
 // 8. Manifest consistency survives partial failures
 console.log('\n[8] Manifest stability on partial failure');

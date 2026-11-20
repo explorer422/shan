@@ -2,6 +2,36 @@ import manifestData from '../data/media-manifest.json' with {
   type: 'json',
 };
 
+interface NodeFs {
+  existsSync(p: string): boolean;
+}
+
+interface NodePath {
+  join(...paths: string[]): string;
+}
+
+// ponytail: Checks local disk cache to enable offline dev preview before upload
+function hasLocalVariant(key?: string): boolean {
+  if (!key) return false;
+  try {
+    const g = globalThis as {
+      process?: {
+        cwd?: () => string;
+        getBuiltinModule?: (id: string) => unknown;
+      };
+    };
+    const getMod = g.process?.getBuiltinModule;
+    if (!getMod || !g.process?.cwd) return false;
+    const fsMod = getMod('node:fs') as NodeFs | undefined;
+    const pathMod = getMod('node:path') as NodePath | undefined;
+    if (!fsMod || !pathMod) return false;
+    const localPath = pathMod.join(g.process.cwd(), '.local-media', key);
+    return fsMod.existsSync(localPath);
+  } catch {
+    return false;
+  }
+}
+
 export interface MediaVariant {
   key: string;
   w: number;
@@ -56,20 +86,6 @@ export function resolveMedia(mediaId: string): ResolvedMedia {
     import.meta.env?.PUBLIC_MEDIA_BASE_URL ??
     g.process?.env?.PUBLIC_MEDIA_BASE_URL;
 
-  let base: string;
-  if (isDev) {
-    base = (configuredBase || '/media').replace(/\/$/, '');
-  } else {
-    // Review Finding 3: Do not silently fallback to placeholder domain
-    if (!configuredBase) {
-      throw new Error(
-        '[media-resolver] Production build requires PUBLIC_MEDIA_BASE_URL ' +
-        'to be explicitly configured when resolving published media.'
-      );
-    }
-    base = configuredBase.replace(/\/$/, '');
-  }
-
   const cleanId = mediaId.replace(/^media:/, '');
   const items = manifestData.items as Record<string, MediaItem>;
   const item = items[cleanId];
@@ -83,10 +99,10 @@ export function resolveMedia(mediaId: string): ResolvedMedia {
     }
     console.warn(`[media-resolver] Missing manifest entry: ${mediaId}`);
     return {
-      src: `${base}/placeholder.webp`,
-      srcSet: `${base}/placeholder.webp 1x`,
+      src: '/media/placeholder.webp',
+      srcSet: '/media/placeholder.webp 1x',
       avifSrcSet: '',
-      thumbnailSrc: `${base}/placeholder.webp`,
+      thumbnailSrc: '/media/placeholder.webp',
       width: 1200,
       height: 800,
       aspectRatio: 1.5,
@@ -99,6 +115,23 @@ export function resolveMedia(mediaId: string): ResolvedMedia {
       `[media-resolver] Production build failed: Media item '${mediaId}' ` +
       `is missing required variants.`
     );
+  }
+
+  let base: string;
+  if (isDev) {
+    const hasLocal = hasLocalVariant(v?.card800?.key);
+    base = hasLocal
+      ? '/media'
+      : (configuredBase || '/media').replace(/\/$/, '');
+  } else {
+    // Review Finding 3: Do not silently fallback to placeholder domain
+    if (!configuredBase) {
+      throw new Error(
+        '[media-resolver] Production build requires PUBLIC_MEDIA_BASE_URL ' +
+        'to be explicitly configured when resolving published media.'
+      );
+    }
+    base = configuredBase.replace(/\/$/, '');
   }
   return {
     src: `${base}/${v.card800.key}`,

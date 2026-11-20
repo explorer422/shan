@@ -42,14 +42,68 @@ if (isMain) {
   }
 }
 
+// ponytail: Parses repeated --item <id> or --item=<id> CLI options
+export function parseScopeArgs(argv = process.argv.slice(2)) {
+  const scoped = [];
+  for (let i = 0; i < argv.length; i++) {
+    if (argv[i] === '--item') {
+      if (!argv[i + 1] || argv[i + 1].startsWith('--')) {
+        throw new Error('--item requires a media ID argument.');
+      }
+      scoped.push(argv[i + 1]);
+      i++;
+    } else if (argv[i].startsWith('--item=')) {
+      const val = argv[i].slice('--item='.length).trim();
+      if (!val) {
+        throw new Error('--item requires a media ID argument.');
+      }
+      scoped.push(val);
+    }
+  }
+  return scoped;
+}
+
 if (!fs.existsSync(MANIFEST_PATH)) {
   console.error(`[publish-media] Manifest not found: ${MANIFEST_PATH}`);
   process.exit(1);
 }
 
 const manifest = JSON.parse(fs.readFileSync(MANIFEST_PATH, 'utf-8'));
-const items = Object.values(manifest.items);
-console.log(`[publish-media] Loaded ${items.length} items from manifest.`);
+
+let targetItems = [];
+if (isMain) {
+  let scopedItemIds = [];
+  try {
+    scopedItemIds = parseScopeArgs(args);
+  } catch (err) {
+    console.error(`[publish-media] Error: ${err.message}`);
+    process.exit(1);
+  }
+
+  if (scopedItemIds.length > 0) {
+    const uniqueIds = Array.from(new Set(scopedItemIds));
+    for (const id of uniqueIds) {
+      if (!manifest.items[id]) {
+        console.error(
+          `[publish-media] Error: Media ID '${id}' not found in manifest.`
+        );
+        process.exit(1);
+      }
+    }
+    targetItems = uniqueIds.map((id) => manifest.items[id]);
+    console.log(
+      `[publish-media] Scope: ${targetItems.length} item(s) ` +
+        `(${uniqueIds.join(', ')})`
+    );
+  } else {
+    targetItems = Object.values(manifest.items);
+    console.log(
+      `[publish-media] Loaded ${targetItems.length} items from manifest.`
+    );
+  }
+} else {
+  targetItems = Object.values(manifest.items);
+}
 
 export async function checkRemoteExists(
   key,
@@ -210,7 +264,7 @@ export async function uploadVariant(localPath, key, expectedSha256) {
   return true;
 }
 
-export async function publishAll() {
+export async function publishAll(itemsToPublish = targetItems) {
   const results = {
     uploaded: 0,
     skipped: 0,
@@ -219,7 +273,7 @@ export async function publishAll() {
     collisions: 0,
   };
 
-  for (const item of items) {
+  for (const item of itemsToPublish) {
     const variantKeys = Object.values(item.variants).map((v) => v.key);
     let allVariantsOk = true;
 

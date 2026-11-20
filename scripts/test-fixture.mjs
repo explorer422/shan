@@ -152,7 +152,7 @@ export async function setupTestFixtures() {
 
   const testManifest = {
     version: '2.0',
-    generatedAt: new Date().toISOString(),
+    generatedAt: '2026-11-20T00:00:00.000Z',
     items: {
       'test/sample-story/cover': {
         id: 'test/sample-story/cover',

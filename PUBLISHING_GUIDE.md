@@ -41,13 +41,16 @@
 - `node scripts/process-media.mjs`：在本機壓縮照片並建立索引。
 - `node scripts/publish-media.mjs --dry-run`：
   上傳模擬測試，僅顯示會上傳哪些檔案，不會產生任何網路傳輸。
+- `npm run deploy -- --dry-run`：
+  部署模擬測試，檢查 Git 工作區與 Keychain 金鑰，不發送任何部署請求。
 
 ### 🔴 紅燈：正式發布指令（會變更雲端或線上網站）
 
 - `node scripts/publish-media.mjs --prod`：
   將壓縮後的圖檔正式上傳至 Cloudflare R2 雲端儲存桶。
 - `git push origin main`：將文章與圖片索引推送到 GitHub。
-- 在 GitHub 網頁觸發 **Deploy to GitHub Pages**：正式更新對外網站。
+- `npm run deploy`：觸發 GitHub Actions 部署工作流程，正式更新對外網站。
+  *(亦可作為備用直接在 GitHub 網頁觸發 Deploy to GitHub Pages)*
 
 ---
 
@@ -190,11 +193,21 @@ relatedStories:
 
 ### 步驟 7：正式發布至 GitHub Pages
 
-1. 打開瀏覽器進入 GitHub 倉庫頁面。
-2. 點擊頂部的 **Actions** 分頁。
-3. 在左側清單選擇 **Deploy to GitHub Pages** 工作流程。
-4. 點選右側的 **Run workflow** 按鈕，分支選擇 `main`，點擊確認送出。
-5. 等待約 1 至 2 分鐘，綠色打勾完成後即可在 `https://shan.page` 看到新文章！
+在終端機直接執行部署指令：
+```bash
+npm run deploy
+```
+系統會自動完成以下防護檢查：
+1. 確認本機 Git 工作區完全乾淨（無未提交修改）。
+2. 確認本機 `main` 分支與遠端 `origin/main` 完全同步。
+3. 自 macOS Keychain 安全讀取 GitHub PAT。
+4. 透過 GitHub REST API 觸發 `deploy.yml` 部署流程。
+
+指令完成後會印出工作流程追蹤網址，約 1 至 2 分鐘即可在
+`https://shan.page` 看到新上線的內容！
+
+*(備用手動方式：亦可在 GitHub 網頁 -> Actions -> Deploy to GitHub Pages*
+*-> 點選 Run workflow)*
 
 ---
 
@@ -291,8 +304,8 @@ npm run verify:isolation
 git add src/content/moments/morning-mist.md src/data/media-manifest.json
 git commit -m "feat(moments): add morning-mist"
 git push origin main
+npm run deploy
 ```
-前往 GitHub Actions 觸發 **Deploy to GitHub Pages** 完成發布。
 
 ---
 
@@ -316,7 +329,10 @@ git push origin main
    git commit -m "fix(stories): correct typo in <slug>"
    git push origin main
    ```
-4. 至 GitHub Actions 執行 **Deploy to GitHub Pages** 即可更新線上網站。
+4. **一鍵正式發布**：
+   ```bash
+   npm run deploy
+   ```
 
 ---
 
@@ -346,7 +362,10 @@ git push origin main
    git commit -m "chore(media): update cover for autumn-leaves"
    git push origin main
    ```
-6. 觸發 GitHub Actions 部署。
+6. 執行正式部署：
+   ```bash
+   npm run deploy
+   ```
    *(注意：R2 上的舊檔案會安全保留，不會造成外連使用者破圖。)*
 
 ---
@@ -364,7 +383,64 @@ git push origin main
 
 ---
 
-## 8. 常見問題與排錯指南（Troubleshooting）
+## 8. 一鍵部署金鑰設定與 Token 輪換指南
+
+`npm run deploy` 透過 GitHub REST API 自動觸發部署，金鑰嚴格保存在
+macOS 系統層級的 Keychain（鑰匙圈）中，絕不落地存檔至 `.env` 或專案代碼。
+
+### 初次設定：建立 GitHub Fine-grained PAT 並存入 Keychain
+
+1. **前往 GitHub 建立 Token**：
+   - 瀏覽器開啟：`GitHub` -> `Settings` -> `Developer settings`
+     -> `Personal access tokens` -> `Fine-grained tokens`。
+   - 點擊 **Generate new token**。
+   - **Token name**：`shan-github-deploy`。
+   - **Expiration**：建議設定 90 天（或自訂期限）。
+   - **Repository access**：選擇 `Only select repositories`，選取
+     `explorer422/shan`。
+   - **Permissions**：在 `Repository permissions` 下找到 **Actions**，
+     設定權限為 **Read and write**。
+   - 點擊 **Generate token** 並複製生成的字串（`github_pat_...`）。
+
+2. **存入 macOS Keychain（互動式安全輸入，不留終端機紀錄）**：
+   在終端機執行下列指令：
+   ```bash
+   security add-generic-password -s "shan-github-deploy" \
+     -a "explorer422" -U -w
+   ```
+   *終端機會提示 `password for new item: `，直接貼上 PAT 並按 Enter。*
+   *密碼不會顯示在螢幕上，亦不會記錄於 shell history，安全無虞。*
+
+3. **安全驗證**：
+   執行部署模擬測試：
+   ```bash
+   npm run deploy -- --dry-run
+   ```
+   若終端機顯示 `Keychain check passed` 且無錯誤，即代表金鑰設定成功！
+
+---
+
+### Token 到期輪換（Token Rotation）
+
+當 GitHub 發送 Token 即將到期通知，或定期輪替安全性金鑰時：
+
+1. 登入 GitHub，在同一 Token 頁面點擊 **Regenerate token**
+   （或建立新的 Fine-grained PAT）。
+2. 在終端機執行更新指令（`-U` 參數會自動覆蓋舊密碼）：
+   ```bash
+   security add-generic-password -s "shan-github-deploy" \
+     -a "explorer422" -U -w
+   ```
+   *於提示時直接貼上新 PAT 並按 Enter 即可完成覆蓋更新。*
+3. 執行模擬確認：
+   ```bash
+   npm run deploy -- --dry-run
+   ```
+4. 確認更新成功後，即可在 GitHub 上刪除舊的 Token。
+
+---
+
+## 9. 常見問題與排錯指南（Troubleshooting）
 
 ### Q1: 本機預覽時照片顯示為空白或破損？
 - 請確認是否已執行過 `node scripts/process-media.mjs`。
@@ -387,9 +463,17 @@ git push origin main
 - 請檢查專案根目錄下的 `.env` 檔案是否存在，並確認包含：
   `R2_ACCOUNT_ID`、`R2_ACCESS_KEY_ID`、`R2_SECRET_ACCESS_KEY`、`R2_BUCKET`。
 
+### Q5: 執行 `npm run deploy` 出現金鑰或權限錯誤？
+- **若提示 PAT not found**：代表 Keychain 尚未儲存金鑰，請參閱第 8 節
+  的 `security add-generic-password` 指令。
+- **若提示 401 Bad credentials**：代表 Token 已過期或失效，請參考第 8 節
+  重新產生並輪換 Token。
+- **若提示 403 Forbidden**：代表 Token 權限不足，請確認該 PAT 已被授予
+  `explorer422/shan` 倉庫的 `Actions: Read and write` 權限。
+
 ---
 
-## 9. 常用指令速查卡
+## 10. 常用指令速查卡
 
 | 常用情境 | 執行指令 |
 | :--- | :--- |
@@ -401,3 +485,5 @@ git push origin main
 | 驗證單圖已在線上 | `node scripts/publish-media.mjs --prod --verify-only --item <id>` |
 | 全站圖片雲端校驗 | `node scripts/publish-media.mjs --prod --verify-only` |
 | Git 隔離安全檢查 | `npm run verify:isolation` |
+| 模擬部署檢查 | `npm run deploy -- --dry-run` |
+| 正式網站部署 | `npm run deploy` |

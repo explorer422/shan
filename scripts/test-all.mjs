@@ -6,4 +6,5 @@ execSync('node scripts/test-media-resolution.mjs', { stdio: 'inherit' });
 execSync('node scripts/test-image-pipeline.mjs', { stdio: 'inherit' });
 execSync('node scripts/test-media-publisher.mjs', { stdio: 'inherit' });
 execSync('node scripts/test-site-build.mjs', { stdio: 'inherit' });
+execSync('node scripts/test-deploy.mjs', { stdio: 'inherit' });
 console.log('\n[test-all] ALL VERIFICATION SUITES COMPLETED SUCCESSFULLY! ✓');

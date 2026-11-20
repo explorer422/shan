@@ -16,6 +16,7 @@ const ROOT = process.cwd();
 const MOCK_DIR = path.join(ROOT, '.mock-r2');
 const { manifest: manifestData, manifestPath: MANIFEST_PATH } =
   await setupTestFixtures();
+const initialManifestRaw = fs.readFileSync(MANIFEST_PATH, 'utf8');
 
 console.log('[test-media-publisher] Starting Media Publisher Suite...');
 
@@ -291,6 +292,9 @@ assert.ok(verifyOut.includes('uploaded: 0'));
 console.log(
   `  ✓ Verify-only mode verified all ${totalVariants} objects.`
 );
+
+// Restore fixture manifest so working tree remains pristine
+fs.writeFileSync(MANIFEST_PATH, initialManifestRaw);
 
 console.log(
   '\n[test-media-publisher] ALL PUBLISHER REGRESSION CHECKS PASSED! ✓'

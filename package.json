@@ -13,7 +13,9 @@
     "test:pipeline": "node scripts/test-image-pipeline.mjs",
     "test:publisher": "node scripts/test-media-publisher.mjs",
     "test:build": "node scripts/test-site-build.mjs",
-    "test": "node scripts/test-all.mjs"
+    "test:deploy": "node scripts/test-deploy.mjs",
+    "test": "node scripts/test-all.mjs",
+    "deploy": "node scripts/deploy.mjs"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.12",

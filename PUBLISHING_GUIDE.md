@@ -402,14 +402,14 @@ macOS 系統層級的 Keychain（鑰匙圈）中，絕不落地存檔至 `.env` 
      設定權限為 **Read and write**。
    - 點擊 **Generate token** 並複製生成的字串（`github_pat_...`）。
 
-2. **存入 macOS Keychain（互動式安全輸入，不留終端機紀錄）**：
-   在終端機執行下列指令：
+2. **存入 macOS Keychain**：
+   在終端機執行下列指令（將 `-w` 置於最後且不接參數，系統會進入互動式
+   密碼輸入提示，避免 Token 留存在 Shell 歷程或行程列表中）：
    ```bash
    security add-generic-password -s "shan-github-deploy" \
      -a "explorer422" -U -w
    ```
-   *終端機會提示 `password for new item: `，直接貼上 PAT 並按 Enter。*
-   *密碼不會顯示在螢幕上，亦不會記錄於 shell history，安全無虞。*
+   終端機出現 `password: ` 提示時，貼上複製的 Token 並按 Enter。
 
 3. **安全驗證**：
    執行部署模擬測試：
@@ -422,16 +422,18 @@ macOS 系統層級的 Keychain（鑰匙圈）中，絕不落地存檔至 `.env` 
 
 ### Token 到期輪換（Token Rotation）
 
-當 GitHub 發送 Token 即將到期通知，或定期輪替安全性金鑰時：
+PAT 到期提醒目前已手動建立於 Apple Reminders（提醒事項）。當提醒觸發、
+收到 GitHub 到期通知信，或需定期輪替安全性金鑰時：
 
 1. 登入 GitHub，在同一 Token 頁面點擊 **Regenerate token**
    （或建立新的 Fine-grained PAT）。
-2. 在終端機執行更新指令（`-U` 參數會自動覆蓋舊密碼）：
+2. 在終端機執行更新指令（以互動方式安全輸入新 Token，`-U` 會自動覆蓋舊
+   紀錄）：
    ```bash
    security add-generic-password -s "shan-github-deploy" \
      -a "explorer422" -U -w
    ```
-   *於提示時直接貼上新 PAT 並按 Enter 即可完成覆蓋更新。*
+   終端機提示 `password: ` 時，貼上新 Token 並按 Enter。
 3. 執行模擬確認：
    ```bash
    npm run deploy -- --dry-run
